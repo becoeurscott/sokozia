@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { getSession } from "@/lib/insforge";
 import { signOut } from "./actions";
+import NavMenu from "@/components/NavMenu";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"] });
@@ -17,27 +18,29 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className={`${jakarta.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
-        <header className="sticky top-0 z-20 border-b border-line bg-bg/90 backdrop-blur">
+        <header className="sticky top-0 z-50 border-b border-line bg-bg/95 backdrop-blur">
           <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4">
             <Link href="/" className="text-xl font-extrabold tracking-tight">
               Soko<span className="text-brand">zia</span>
             </Link>
-            <div className="flex items-center gap-2 text-sm font-medium sm:gap-4">
-              <Link href="/tarifs" className="hidden sm:inline">Tarifs</Link>
-              {profile ? (
-                <>
-                  <Link href="/mes-videos" className="hidden sm:inline">Mes vidéos</Link>
-                  {profile.is_admin && <Link href="/admin">Admin</Link>}
-                  <Link href="/studio" className="btn !px-4 !py-2">Créer</Link>
-                  <form action={signOut}><button className="text-muted">Sortir</button></form>
-                </>
-              ) : (
-                <>
-                  <Link href="/connexion">Connexion</Link>
-                  <Link href="/inscription" className="btn !px-4 !py-2">Commencer</Link>
-                </>
-              )}
-            </div>
+            {profile ? (
+              <NavMenu
+                items={[
+                  { href: "/", label: "Accueil" },
+                  { href: "/studio", label: "Studio" },
+                  { href: "/mes-videos", label: "Mes vidéos" },
+                  { href: "/tarifs", label: "Tarifs" },
+                  ...(profile.is_admin ? [{ href: "/admin", label: "Admin" }] : []),
+                ]}
+                cta={{ href: "/studio", label: "Créer" }}
+                signOut={signOut}
+              />
+            ) : (
+              <NavMenu
+                items={[{ href: "/", label: "Accueil" }, { href: "/tarifs", label: "Tarifs" }, { href: "/connexion", label: "Connexion" }]}
+                cta={{ href: "/inscription", label: "Commencer" }}
+              />
+            )}
           </nav>
         </header>
         <main className="flex-1">{children}</main>
