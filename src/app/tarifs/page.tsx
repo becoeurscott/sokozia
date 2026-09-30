@@ -34,7 +34,7 @@ export default async function Page() {
       <PricingPicker rows={rows} loggedIn={!!profile} />
       <div className="mt-12 grid gap-4 text-center text-sm sm:grid-cols-3">
         <div className="card"><RotateCcw className="mx-auto mb-2 text-brand" size={22} strokeWidth={1.8} /><b>Échec = non décompté</b><br /><span className="text-muted">Ta pub est rendue automatiquement</span></div>
-        <div className="card"><Smartphone className="mx-auto mb-2 text-brand" size={22} strokeWidth={1.8} /><b>Mobile Money</b><br /><span className="text-muted">Orange, MTN, Wave, Moov, Airtel</span></div>
+        <div className="card"><Smartphone className="mx-auto mb-2 text-brand" size={22} strokeWidth={1.8} /><b>Mobile Money</b><br /><span className="text-muted">Orange, MTN, Moov, Airtel, M-Pesa</span></div>
         <div className="card"><Layers className="mx-auto mb-2 text-brand" size={22} strokeWidth={1.8} /><b>Prix clair</b><br /><span className="text-muted">Selon le style et la durée, rien d&apos;autre</span></div>
       </div>
     </div>

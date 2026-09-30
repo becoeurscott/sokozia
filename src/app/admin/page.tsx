@@ -39,6 +39,15 @@ async function saveSettings(form: FormData) {
 export default async function Page() {
   await requireAdmin();
   const db = adminClient().database;
+  const since30 = new Date(Date.now() - 30 * 86400000).toISOString();
+  const [{ data: payments }, { data: users }, { data: vids30 }] = await Promise.all([
+    db.from("payments").select("id, created_at, plan, style_id, duration_s, amount, currency, status, correspondent, phone").order("created_at", { ascending: false }).limit(200),
+    db.from("profiles").select("id"),
+    db.from("videos").select("status").gt("created_at", since30),
+  ]);
+  const paid = (payments ?? []).filter((p) => p.status === "completed");
+  const revenue = paid.filter((p) => p.created_at > since30).reduce<Record<string, number>>((r, p) => ({ ...r, [p.currency]: (r[p.currency] ?? 0) + p.amount }), {});
+  const vstat = (vids30 ?? []).reduce<Record<string, number>>((r, v) => ({ ...r, [v.status]: (r[v.status] ?? 0) + 1 }), {});
   const [{ data: styles }, { data: settings }, { data: videos }, pricing] = await Promise.all([
     db.from("styles").select("*").order("sort"),
     db.from("settings").select("key, value"),
@@ -50,6 +59,33 @@ export default async function Page() {
   return (
     <div className="mx-auto max-w-6xl space-y-10 px-4 py-10">
       <h1 className="text-3xl font-extrabold">Admin</h1>
+
+      <section>
+        <h2 className="mb-3 text-xl font-bold">Activité (30 derniers jours)</h2>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <div className="card"><p className="text-xs text-muted">Chiffre d&apos;affaires</p><p className="text-xl font-extrabold">{Object.entries(revenue).map(([c, a]) => fmt(a, c)).join(" · ") || "0"}</p></div>
+          <div className="card"><p className="text-xs text-muted">Paiements réussis</p><p className="text-xl font-extrabold">{paid.filter((p) => p.created_at > since30).length}</p></div>
+          <div className="card"><p className="text-xs text-muted">Comptes</p><p className="text-xl font-extrabold">{users?.length ?? 0}</p></div>
+          <div className="card"><p className="text-xs text-muted">Pubs créées / échouées</p><p className="text-xl font-extrabold">{vstat.ready ?? 0} / {vstat.failed ?? 0}</p></div>
+        </div>
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-card">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-bg text-xs text-muted"><tr><th className="p-3">Date</th><th className="p-3">Offre</th><th className="p-3">Montant</th><th className="p-3">Opérateur</th><th className="p-3">Téléphone</th><th className="p-3">Statut</th></tr></thead>
+            <tbody>
+              {(payments ?? []).slice(0, 30).map((p) => (
+                <tr key={p.id} className="border-t border-line">
+                  <td className="p-3 whitespace-nowrap">{new Date(p.created_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</td>
+                  <td className="p-3">{p.plan} · {p.style_id} {p.duration_s} s</td>
+                  <td className="p-3 whitespace-nowrap">{fmt(p.amount, p.currency)}</td>
+                  <td className="p-3">{p.correspondent ?? "—"}</td>
+                  <td className="p-3">{p.phone ?? "—"}</td>
+                  <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${p.status === "completed" ? "bg-accent/10 text-accent" : p.status === "failed" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"}`}>{{ completed: "payé", failed: "échoué", pending: "en attente" }[p.status as string] ?? p.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section>
         <h2 className="mb-3 text-xl font-bold">Styles (modèles cachés aux clients)</h2>

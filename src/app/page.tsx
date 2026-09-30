@@ -17,7 +17,7 @@ const styleIcons = [Zap, Video, Clapperboard, Crown];
 
 const faq = [
   ["Je dois savoir faire des vidéos ?", "Non. Tu réponds à quelques questions simples, Awa écrit le script et on crée la vidéo."],
-  ["Comment je paye ?", "Par Mobile Money : Orange Money, MTN MoMo, Wave, Moov, Airtel. Paiement sécurisé par pawaPay."],
+  ["Comment je paye ?", "Par Mobile Money : Orange Money, MTN MoMo, Moov, Airtel, M-Pesa. Paiement sécurisé par pawaPay."],
   ["Combien de temps ça prend ?", "Entre 5 et 15 minutes selon la durée et le style."],
   ["Et si la vidéo ne marche pas ?", "Ta pub n'est pas décomptée : tu peux la relancer gratuitement."],
   ["Je peux l'utiliser pour mes pubs ?", "Oui, sur TikTok, Facebook, Instagram, WhatsApp et ton site. Les vidéos restent la propriété de Sokozia (voir conditions)."],
@@ -35,7 +35,7 @@ export default async function Home() {
         <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-10 sm:pt-16 text-center">
           <div>
             <p className="mx-auto w-fit rounded-full border border-line bg-card px-4 py-1.5 text-sm font-semibold">
-              Orange Money · MTN MoMo · Wave · Moov · Airtel
+              Orange Money · MTN MoMo · Moov · Airtel · M-Pesa
             </p>
             <h1 className="mt-5 mx-auto max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
               Tes vidéos pub avec des <span className="relative whitespace-nowrap text-brand">visages africains<svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" preserveAspectRatio="none"><path d="M2 7 Q100 0 198 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" /></svg></span>, prêtes en quelques minutes.

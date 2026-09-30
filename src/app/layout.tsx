@@ -18,7 +18,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="fr" className={`${jakarta.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <header className="sticky top-0 z-20 border-b border-line bg-bg/90 backdrop-blur">
-          <nav className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+          <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4">
             <Link href="/" className="text-xl font-extrabold tracking-tight">
               Soko<span className="text-brand">zia</span>
             </Link>

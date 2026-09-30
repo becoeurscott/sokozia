@@ -5,9 +5,11 @@ function headers() {
 }
 
 // Chaque modèle a son propre objet de paramètres (seedanceParams, klingParams, veoParams…) et son champ d'image de départ.
-export type StyleConfig = { apiframe_model: string; params_key: string; image_key: string; apiframe_params: Record<string, unknown> | null };
+export type StyleConfig = { apiframe_model: string; params_key: string; image_key: string; refs_key: string | null; apiframe_params: Record<string, unknown> | null };
 
-export async function startVideo(style: StyleConfig, prompt: string, duration: number, imageUrl?: string | null) {
+// refs = [fiche personnage, fiche produit, lieu] pour les modèles qui acceptent des références ;
+// sinon startImage = image d'ouverture.
+export async function startVideo(style: StyleConfig, prompt: string, duration: number, o: { startImage?: string | null; refs?: string[] } = {}) {
   const res = await fetch(`${BASE}/videos/generate`, {
     method: "POST",
     headers: headers(),
@@ -18,7 +20,8 @@ export async function startVideo(style: StyleConfig, prompt: string, duration: n
         ...(style.apiframe_params ?? {}),
         duration,
         aspect_ratio: "9:16",
-        ...(imageUrl ? { [style.image_key]: imageUrl } : {}),
+        ...(o.startImage ? { [style.image_key]: o.startImage } : {}),
+        ...(style.refs_key && o.refs?.length ? { [style.refs_key]: o.refs } : {}),
       },
     }),
   });
@@ -49,4 +52,22 @@ export async function getJob(jobId: string) {
     url: status === "COMPLETED" ? findUrl(job.result ?? job) : null,
     error: job.error ?? null,
   } as const;
+}
+
+export type ImageModel = { model: string; params_key: string; refs_key: string; params: Record<string, unknown> };
+
+// Image de référence (fiche produit, fiche personnage, lieu, image d'ouverture).
+export async function startImage(m: ImageModel, prompt: string, aspect: "16:9" | "9:16", refs: string[]) {
+  const res = await fetch(`${BASE}/images/generate`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({
+      model: m.model,
+      prompt,
+      [m.params_key]: { ...m.params, aspect_ratio: aspect, ...(refs.length ? { [m.refs_key]: refs } : {}) },
+    }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.jobId) throw new Error(json.message || json.error || `apiframe ${res.status}`);
+  return json.jobId as string;
 }

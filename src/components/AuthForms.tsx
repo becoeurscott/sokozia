@@ -6,7 +6,7 @@ import { signIn, signUp, verify, type State } from "@/app/actions";
 
 const COUNTRIES = [
   ["CM", "Cameroun"], ["CI", "Côte d'Ivoire"], ["SN", "Sénégal"], ["BJ", "Bénin"],
-  ["BF", "Burkina Faso"], ["CG", "Congo-Brazzaville"], ["GA", "Gabon"], ["CD", "RD Congo"], ["RW", "Rwanda"],
+  ["CG", "Congo-Brazzaville"], ["GA", "Gabon"], ["CD", "RD Congo"], ["RW", "Rwanda"],
 ];
 
 function Err({ s }: { s: State }) {

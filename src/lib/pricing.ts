@@ -7,7 +7,6 @@ export const COUNTRIES: Record<string, { name: string; currency: string; iso3: s
   CI: { name: "Côte d'Ivoire", currency: "XOF", iso3: "CIV", dial: "225" },
   SN: { name: "Sénégal", currency: "XOF", iso3: "SEN", dial: "221" },
   BJ: { name: "Bénin", currency: "XOF", iso3: "BEN", dial: "229" },
-  BF: { name: "Burkina Faso", currency: "XOF", iso3: "BFA", dial: "226" },
   CG: { name: "Congo-Brazzaville", currency: "XAF", iso3: "COG", dial: "242" },
   GA: { name: "Gabon", currency: "XAF", iso3: "GAB", dial: "241" },
   CD: { name: "RD Congo", currency: "CDF", iso3: "COD", dial: "243" },

@@ -17,6 +17,12 @@ export async function settlePayment(paymentId: string) {
       .eq("id", paymentId).eq("status", "pending");
     return "failed";
   }
+  // Page de paiement jamais validée (elle expire après 15 min chez pawaPay) : on clôt au bout de 30 min.
+  if (d.status === "NOT_FOUND" && Date.now() - new Date(p.created_at).getTime() > 30 * 60000) {
+    await db.from("payments").update({ status: "failed", raw: { expired: true }, updated_at: new Date().toISOString() })
+      .eq("id", paymentId).eq("status", "pending");
+    return "failed";
+  }
   if (d.status !== "COMPLETED" || d.amount < p.amount || d.currency !== p.currency) return "pending";
 
   const { data: claimed } = await db.from("payments")
@@ -32,9 +38,7 @@ export async function settlePayment(paymentId: string) {
 
   if (p.plan === "single" && p.conversation_id) {
     const passId = await consumePass(p.user_id, p.style_id, p.duration_s);
-    if (passId) await startGeneration({
-      userId: p.user_id, conversationId: p.conversation_id, styleId: p.style_id, duration: p.duration_s, imageUrl: p.image_url, passId,
-    }).catch(() => null);
+    if (passId) await startGeneration({ userId: p.user_id, conversationId: p.conversation_id, styleId: p.style_id, passId }).catch(() => null);
   }
   return "completed";
 }
