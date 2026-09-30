@@ -42,7 +42,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         <main className="flex-1">{children}</main>
         <footer className="border-t border-line py-8 text-center text-sm text-muted">
-          © {new Date().getFullYear()} Sokozia · <Link href="/cgu" className="underline">Conditions d&apos;utilisation</Link>
+          © {new Date().getFullYear()} Sokozia · <Link href="/cgu" className="underline">Conditions générales</Link> · <Link href="/confidentialite" className="underline">Confidentialité</Link> · <a href="mailto:support@sokozia.com" className="underline">support@sokozia.com</a>
         </footer>
       </body>
     </html>

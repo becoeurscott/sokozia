@@ -40,7 +40,7 @@ export function SignUpForm() {
       <input name="phone" type="tel" placeholder="Numéro Mobile Money (ex : 237 6XX XX XX XX)" className="input" />
       <label className="flex items-start gap-3 text-sm text-muted">
         <input type="checkbox" name="terms" required className="mt-1 h-4 w-4 accent-[var(--brand)]" />
-        <span>J&apos;accepte les <Link href="/cgu" target="_blank" className="underline">conditions d&apos;utilisation</Link>, y compris que les vidéos créées appartiennent à Sokozia.</span>
+        <span>J&apos;ai 18 ans ou plus et j&apos;accepte les <Link href="/cgu" target="_blank" className="underline">conditions générales</Link> et la <Link href="/confidentialite" target="_blank" className="underline">politique de confidentialité</Link>. Je comprends que les vidéos créées appartiennent à Sokozia et que j&apos;en reçois une licence d&apos;utilisation.</span>
       </label>
       <Err s={state} />
       <button className="btn w-full" disabled={pending}>{pending ? "Création…" : "Créer mon compte"}</button>
