@@ -1,0 +1,7 @@
+node_modules
+.next
+.env*
+.insforge/
+*.nosync
+*.tsbuildinfo
+next-env.d.ts
