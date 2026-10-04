@@ -20,7 +20,7 @@ export async function startGeneration(o: { userId: string; conversationId: strin
   if (refs.length < 3) return fail("Il manque une image validée (produit, créateur ou lieu).");
 
   const withRefs = Boolean(style.refs_key);
-  const { prompt } = await videoPrompt(p.product, p.script, p.duration_s, withRefs);
+  const { prompt } = await videoPrompt(p.product, p.script, p.duration_s, withRefs, p.creator_desc ?? "");
   const { data: created } = await db.from("videos").insert([{
     created_by: o.userId, conversation_id: p.id, style_id: style.id, duration_s: p.duration_s, prompt, pass_id: o.passId,
   }]).select("id");
@@ -34,7 +34,7 @@ export async function startGeneration(o: { userId: string; conversationId: strin
       // Pas de références pour ce modèle : on crée d'abord l'image d'ouverture (créateur + lieu + produit),
       // la vidéo démarre dans syncVideo dès qu'elle est prête.
       const [creator, product, location] = refs;
-      const f = await framePrompt(p.product, p.script);
+      const f = await framePrompt(p.product, p.script, p.creator_desc ?? "");
       const frameId = await genImage(p.id, "frame", f.prompt, "9:16", [creator, location, product]);
       await db.from("videos").update({ image_url: `frame:${frameId}` }).eq("id", videoId);
     }

@@ -3,6 +3,7 @@ import { Building2, Clapperboard, Crown, PartyPopper, Shirt, Smartphone, Sparkle
 import { fmt, loadPricing, videoPrice } from "@/lib/pricing";
 import Showcase from "@/components/Showcase";
 import Testimonials from "@/components/Testimonials";
+import CreatorsSection from "@/components/CreatorsSection";
 
 const uses = [
   [Shirt, "Mode & perruques", "Une cliente montre le rendu et donne son avis."],
@@ -70,9 +71,9 @@ export default async function Home() {
         <div className="mt-12 grid items-center gap-10 lg:grid-cols-2">
           <ol className="space-y-6">
             {[
-              ["Raconte ton idée", "Awa te pose 4 ou 5 questions : ton produit, ta cible, ton offre, le ton."],
-              ["Valide le script", "Elle te propose une scène et le texte. Tu peux demander des changements."],
-              ["Choisis le style et crée", "Éclair, Naturel, Studio ou Signature. Le prix s'affiche avant."],
+              ["Parle de ton produit", "Awa te pose quelques questions dans le chat. Envoie aussi tes photos : elle crée la fiche de ton produit."],
+              ["Choisis ton créateur et le lieu", "16 créateurs africains, écoute leur présentation. Puis choisis où tourner : boutique, marché, salon…"],
+              ["Valide le script et crée", "8, 15 ou 30 secondes. Choisis le style, le prix s'affiche avant de payer."],
             ].map(([t, d], i) => (
               <li key={t} className="flex gap-4">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand text-lg font-bold text-white">{i + 1}</span>
@@ -98,6 +99,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      <CreatorsSection />
 
       {/* Pour qui */}
       <section className="bg-ink py-20 text-white">

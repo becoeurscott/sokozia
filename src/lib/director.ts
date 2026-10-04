@@ -66,6 +66,25 @@ async function askJSON<T>(task: string): Promise<T> {
 const revision = (feedback?: string, previous?: string) =>
   feedback ? `\n\nPROMPT PRÉCÉDENT :\n${previous}\n\nLE CLIENT DEMANDE CES CHANGEMENTS : ${feedback}\nRéécris le prompt en appliquant exactement ces changements, garde le reste.` : "";
 
+// 0. Recueil du produit en conversation (remplace le formulaire).
+export type ChatTurn = { role: "user" | "assistant"; content: string };
+
+export function productChat(history: ChatTurn[], photos: number) {
+  return askJSON<{ reply: string; product: Omit<Product, "photos"> & { worn?: boolean } | null }>(`ÉTAPE 1 — TON PRODUIT, en conversation.
+Tu poses UNE question courte à la fois, avec 2 à 4 exemples de réponses, pour connaître :
+1) la marque et le nom du produit, 2) ce que c'est (type, taille), 3) ${photos ? `ce que les ${photos} photo(s) envoyée(s) ne montrent pas (dos, intérieur, texte de l'étiquette)` : "à quoi il ressemble (forme, couleurs, bouchon, texte EXACT de l'étiquette) — propose aussi d'envoyer des photos avec le bouton Photo"}, 4) pourquoi il est bien, 5) qui l'achète, 6) la langue parlée dans la vidéo (français, anglais, français avec expressions locales, pidgin…).
+Le reste (plateforme, style de vidéo, ambiance, direction, mots interdits) est facultatif : demande-le en UNE seule question groupée à la fin, le client peut répondre « non ».
+Regroupe ce que le client dit déjà, ne redemande jamais une info donnée. Si le client est pressé, déduis le reste intelligemment.
+Photos reçues : ${photos}.
+
+CONVERSATION :
+${history.map((m) => `${m.role === "user" ? "CLIENT" : "AWA"} : ${m.content}`).join("\n")}
+
+Quand tu as au moins 1 à 5 et la langue, réponds avec la fiche complète. Sinon product = null.
+JSON : {"reply": "ton message court au client", "product": null}
+ou {"reply": "résumé en 1 phrase + « Je prépare ta fiche produit. »", "product": {"brand": "", "name": "", "what": "", "looks": "", "hidden": "", "benefits": "", "buyer": "", "platform": "TikTok", "videoStyle": "", "vibe": "", "direction": "", "avoid": "", "language": "", "worn": false}}`);
+}
+
 // 1. Fiche produit : une image 16:9, 8 vues en grille 4x2.
 export function productSheetPrompt(p: Product, feedback?: string, previous?: string) {
   return askJSON<{ message: string; prompt: string }>(`${describe(p)}
@@ -139,10 +158,11 @@ JSON : {"message": "1 phrase courte qui demande au client de valider le script",
 }
 
 // 5. Vidéo : un prompt pour toute la durée, avec les 3 références.
-export function videoPrompt(p: Product, script: string, duration: number, withRefs: boolean) {
+export function videoPrompt(p: Product, script: string, duration: number, withRefs: boolean, creator: string) {
   return askJSON<{ prompt: string }>(`${describe(p)}
 
 ÉTAPE 5 — VIDÉO. Écris UN prompt vidéo verticale 9:16 de ${duration} secondes, style UGC smartphone.
+Créateur (à décrire tel quel dans le prompt) : ${creator}
 ${withRefs
     ? "La fiche personnage est @Image1, la fiche produit @Image2, la photo du lieu @Image3. Garde le créateur, le produit et le lieu identiques aux références."
     : "La vidéo démarre sur une image d'ouverture qui montre déjà le créateur, le produit et le lieu : garde-les identiques."}
@@ -154,9 +174,9 @@ JSON : {"prompt": "le prompt vidéo en anglais, script inclus mot pour mot dans 
 }
 
 // Pour les styles sans références : image d'ouverture 9:16 qui assemble créateur + produit + lieu.
-export function framePrompt(p: Product, script: string) {
+export function framePrompt(p: Product, script: string, creator: string) {
   return askJSON<{ prompt: string }>(`${describe(p)}
 
-Écris le prompt d'UNE image verticale 9:16, premier plan de la vidéo : le créateur de @Image1 dans le lieu de @Image2, tenant le produit de @Image3, cadrage selfie smartphone naturel, identiques aux références. Le premier plan du script est : ${script.slice(0, 200)}
+Écris le prompt d'UNE image verticale 9:16, premier plan de la vidéo : le créateur de @Image1 (${creator}) dans le lieu de @Image2, tenant le produit de @Image3, cadrage selfie smartphone naturel, identiques aux références. Le premier plan du script est : ${script.slice(0, 200)}
 JSON : {"prompt": "le prompt en anglais"}`);
 }

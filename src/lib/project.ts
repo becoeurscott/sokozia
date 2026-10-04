@@ -1,7 +1,8 @@
 import { adminClient } from "./insforge";
 import { getJob, startImage, type ImageModel } from "./apiframe";
 import * as awa from "./director";
-import type { Option, Product } from "./director";
+import type { ChatTurn, Option, Product } from "./director";
+import { creatorSheetUrl, findCreator } from "@/content/creators";
 
 // Projet de pub guidé : produit -> créateur -> lieu -> script -> vidéo.
 // Chaque étape d'image peut être régénérée au plus `max_retries` fois (coût inclus dans le prix).
@@ -13,6 +14,7 @@ type Img = { id: string; kind: ImageKind; prompt: string | null; status: string;
 export type ProjectRow = {
   id: string; user_id: string; title: string; step: Step; product: Product | null; options: Option[] | null;
   picked: string | null; duration_s: number | null; script: string | null; retries: Record<string, number>;
+  photos: string[]; creator_id: string | null; creator_desc: string | null;
 };
 
 const db = () => adminClient().database;
@@ -33,7 +35,7 @@ async function update(convId: string, patch: Partial<ProjectRow>) {
 
 export async function loadProject(userId: string, convId: string) {
   const { data } = await db().from("conversations")
-    .select("id, user_id, title, step, product, options, picked, duration_s, script, retries")
+    .select("id, user_id, title, step, product, options, picked, duration_s, script, retries, photos, creator_id, creator_desc")
     .eq("id", convId).eq("user_id", userId).limit(1);
   return (data?.[0] as ProjectRow) ?? null;
 }
@@ -95,6 +97,7 @@ export async function projectState(p: ProjectRow) {
   return {
     id: p.id, title: p.title, step: p.step, options: p.options, picked: p.picked, duration: p.duration_s, script: p.script,
     product: p.product ? { brand: p.product.brand, name: p.product.name, language: p.product.language } : null,
+    creatorId: p.creator_id, photos: p.photos ?? [],
     images: { product: pub(imgs.product), creator: pub(imgs.creator), location: pub(imgs.location) },
     retriesLeft: Math.max(0, maxRetries - (p.retries?.[p.step] ?? 0)),
     messages: (msgs ?? []) as { role: string; content: string }[],
@@ -104,16 +107,35 @@ export async function projectState(p: ProjectRow) {
 
 // ---- Actions ----
 
-export async function createProject(userId: string, product: Product) {
+// Le projet démarre par un premier message dans le chat ; Awa recueille les infos du produit.
+export async function createProject(userId: string, text: string, photos: string[]) {
   const { data } = await db().from("conversations").insert([{
-    user_id: userId, title: `${product.brand} ${product.name}`.trim().slice(0, 60), product, step: "product",
+    user_id: userId, title: text.slice(0, 50) || "Nouvelle pub", step: "product", photos,
   }]).select("id");
   const convId = data![0].id as string;
-  await say(convId, `${product.brand} — ${product.name}`, "user");
-  const r = await awa.productSheetPrompt(product);
-  await say(convId, r.message);
-  await genImage(convId, "product", r.prompt, "16:9", product.photos);
+  await say(convId, text || "(photos envoyées)", "user");
+  await intake((await loadProject(userId, convId))!);
   return convId;
+}
+
+// Une étape de la conversation produit. Quand la fiche est complète, on lance l'image de la fiche produit.
+async function intake(p: ProjectRow) {
+  const { data: msgs } = await db().from("messages").select("role, content").eq("conversation_id", p.id).order("created_at").limit(60);
+  const r = await awa.productChat((msgs ?? []) as ChatTurn[], p.photos?.length ?? 0);
+  await say(p.id, r.reply);
+  if (!r.product) return;
+  // Valeurs par défaut pour les champs facultatifs que la conversation n'a pas couverts.
+  const raw = r.product as Record<string, unknown>;
+  const str = (k: string, d = "") => (typeof raw[k] === "string" && (raw[k] as string).trim() ? (raw[k] as string).trim() : d);
+  const product = {
+    brand: str("brand"), name: str("name"), what: str("what"), looks: str("looks"), hidden: str("hidden"),
+    benefits: str("benefits"), buyer: str("buyer"), platform: str("platform", "TikTok"), videoStyle: str("videoStyle", "propose"),
+    vibe: str("vibe"), direction: str("direction"), avoid: str("avoid"), language: str("language", "français"),
+    worn: Boolean(raw.worn), photos: p.photos ?? [],
+  } as Product;
+  await update(p.id, { product, title: `${product.brand} ${product.name}`.trim().slice(0, 60) });
+  const sheet = await awa.productSheetPrompt(product);
+  await genImage(p.id, "product", sheet.prompt, "16:9", product.photos);
 }
 
 const IMAGE_STEP: Partial<Record<Step, ImageKind>> = { product: "product", creator: "creator", location: "location" };
@@ -141,10 +163,32 @@ async function imageFor(p: ProjectRow, kind: ImageKind, feedback?: string, previ
   return { ...r, refs: [] };
 }
 
-export async function act(p: ProjectRow, a: { action: string; text?: string; index?: number; duration?: number }) {
-  const prod = p.product!;
+export async function act(p: ProjectRow, a: { action: string; text?: string; index?: number; duration?: number; photos?: string[]; creatorId?: string }) {
   const text = (a.text ?? "").trim().slice(0, 1000);
   const kind = IMAGE_STEP[p.step];
+
+  // Conversation produit (avant la fiche produit) : message + photos éventuelles.
+  if (p.step === "product" && !p.product) {
+    const photos = [...(p.photos ?? []), ...(a.photos ?? [])].slice(0, 6);
+    if (a.photos?.length) await update(p.id, { photos });
+    await say(p.id, text || `(${a.photos?.length ?? 0} photo(s) envoyée(s))`, "user");
+    await intake({ ...p, photos });
+    return;
+  }
+  const prod = p.product!;
+
+  // Choix d'un créateur du catalogue : sa fiche personnage existe déjà, on passe directement au lieu.
+  if (a.action === "creator" && p.step === "creator") {
+    const c = findCreator(a.creatorId);
+    if (!c) throw new Error("Créateur introuvable.");
+    const desc = `${c.name}, ${c.age} ans, ${c.country} — ${c.look}`;
+    await say(p.id, `Je choisis ${c.name}`, "user");
+    await db().from("project_images").insert([{ conversation_id: p.id, kind: "creator", status: "ready", approved: true, url: creatorSheetUrl(c.id), prompt: desc }]);
+    const r = await awa.locationOptions(prod, desc);
+    await update(p.id, { creator_id: c.id, creator_desc: desc, step: "location", options: r.options, picked: null });
+    await say(p.id, `Excellent choix, ${c.name} va présenter ton produit. ${r.message}`);
+    return;
+  }
 
   // Modifier ou régénérer l'image / le script de l'étape en cours.
   if (a.action === "revise" || a.action === "regenerate") {
@@ -213,12 +257,11 @@ export async function act(p: ProjectRow, a: { action: string; text?: string; ind
       await db().from("project_images").update({ approved: true }).eq("id", current.id);
     }
     if (p.step === "product") {
-      const r = await awa.creatorOptions(prod);
-      await update(p.id, { step: "creator", options: r.options, picked: null });
-      await say(p.id, r.message);
+      await update(p.id, { step: "creator", options: null, picked: null });
+      await say(p.id, "Fiche produit validée. Choisis maintenant le créateur qui va présenter ton produit. Tu peux écouter sa présentation. Tu préfères un créateur sur mesure ? Décris-le dans le chat.");
     } else if (p.step === "creator") {
       const r = await awa.locationOptions(prod, p.picked ?? "");
-      await update(p.id, { step: "location", options: r.options, picked: null });
+      await update(p.id, { step: "location", options: r.options, picked: null, creator_desc: p.picked, creator_id: null });
       await say(p.id, r.message);
     } else if (p.step === "location") {
       await update(p.id, { step: "script", options: null, picked: null });
