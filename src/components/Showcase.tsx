@@ -1,4 +1,5 @@
 import { placeholders, showcase } from "@/content/showcase";
+import LazyVideo from "./LazyVideo";
 
 function Frame({ children, handle, caption, category }: { children: React.ReactNode; handle: string; caption: string; category: string }) {
   return (
@@ -19,7 +20,7 @@ export default function Showcase() {
     ? showcase.map((m) => (
         <Frame key={m.src} {...m}>
           {m.type === "video"
-            ? <video src={m.src} poster={m.poster} autoPlay muted loop playsInline preload="metadata" className="h-full w-full object-cover" />
+            ? <LazyVideo src={m.src} poster={m.poster} label={m.caption} />
             : <img src={m.src} alt={m.caption} loading="lazy" className="h-full w-full object-cover" />}
         </Frame>
       ))
@@ -28,7 +29,7 @@ export default function Showcase() {
       ));
   return (
     <div className="marquee-wrap overflow-hidden py-2">
-      <div className="marquee" style={{ ["--speed" as string]: "45s" }}>{cards}{cards}</div>
+      <div className="marquee" style={{ ["--speed" as string]: "45s" }}>{cards}{cards.map((c, i) => <div key={`dup-${i}`} aria-hidden className="shrink-0">{c}</div>)}</div>
     </div>
   );
 }
