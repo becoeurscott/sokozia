@@ -26,7 +26,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             {profile ? (
               <NavMenu
                 items={[
-                  { href: "/", label: "Accueil" },
+                  { href: "/tableau-de-bord", label: "Tableau de bord" },
                   { href: "/studio", label: "Studio" },
                   { href: "/mes-videos", label: "Mes vidéos" },
                   { href: "/tarifs", label: "Tarifs" },

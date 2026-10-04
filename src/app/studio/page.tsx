@@ -4,7 +4,8 @@ import { currencyOf, fmt, loadPricing, planPrice } from "@/lib/pricing";
 import { activePasses } from "@/lib/passes";
 import Studio from "@/components/Studio";
 
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ projet?: string }> }) {
+  const { projet } = await searchParams;
   const { profile } = await getSession();
   if (!profile) redirect("/connexion?next=/studio");
   const [pricing, passes, { data: convs }] = await Promise.all([
@@ -30,6 +31,7 @@ export default async function Page() {
       conversations={(convs ?? []) as { id: string; title: string; created_at: string }[]}
       styles={styles} durations={pricing.durations} packs={packs} isAdmin={profile.is_admin}
       firstName={profile.full_name.split(" ")[0]}
+      initialProjectId={projet}
     />
   );
 }

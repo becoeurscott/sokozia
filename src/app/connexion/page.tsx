@@ -4,7 +4,7 @@ import { SignInForm } from "@/components/AuthForms";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
   const { next, error } = await searchParams;
-  if ((await getSession()).user) redirect(next ?? "/studio");
+  if ((await getSession()).user) redirect(next ?? "/tableau-de-bord");
   return (
     <div className="mx-auto max-w-md px-4 py-12">
       <h1 className="mb-6 text-3xl font-extrabold">Connexion</h1>

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/connexion?error=google", base));
 
   const next = request.cookies.get("sz_next")?.value;
-  const response = NextResponse.redirect(new URL(next && /^\/[^/\\]/.test(next) ? next : "/studio", base));
+  const response = NextResponse.redirect(new URL(next && /^\/[^/\\]/.test(next) ? next : "/tableau-de-bord", base));
   const auth = createAuthActions({ requestCookies: request.cookies, responseCookies: response.cookies });
   const { data, error } = await auth.exchangeOAuthCode(code, verifier);
   if (error || !data?.user) return NextResponse.redirect(new URL("/connexion?error=google", base));

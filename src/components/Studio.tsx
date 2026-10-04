@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import type { ProjectState } from "@/lib/project";
 import { CREATORS, creatorFiles } from "@/content/creators";
+import { ChatRow, useChatActions } from "./ChatActions";
 
 type StyleOpt = { price: string; remaining: number };
 type Style = { id: string; name: string; description: string; options: Record<number, StyleOpt | undefined> };
@@ -82,8 +83,8 @@ function CreatorGallery({ onPick, busy }: { onPick: (id: string) => void; busy: 
 
 // ---------------- Studio ----------------
 
-export default function Studio({ conversations, styles: initialStyles, durations, packs, isAdmin, firstName }: {
-  conversations: Conv[]; styles: Style[]; durations: number[]; packs: PackLeft[]; isAdmin: boolean; firstName: string;
+export default function Studio({ conversations, styles: initialStyles, durations, packs, isAdmin, firstName, initialProjectId }: {
+  conversations: Conv[]; styles: Style[]; durations: number[]; packs: PackLeft[]; isAdmin: boolean; firstName: string; initialProjectId?: string;
 }) {
   const [styles, setStyles] = useState(initialStyles);
   const [convs, setConvs] = useState(conversations);
@@ -118,6 +119,23 @@ export default function Studio({ conversations, styles: initialStyles, durations
     }, 5000);
     return () => clearInterval(t);
   }, [waiting, project]);
+
+  const chats = useChatActions(
+    (id, title) => {
+      setConvs((c) => c.map((x) => (x.id === id ? { ...x, title } : x)));
+      setProject((p) => (p && p.id === id ? { ...p, title } : p));
+    },
+    (id) => {
+      setConvs((c) => c.filter((x) => x.id !== id));
+      if (project?.id === id) reset();
+    },
+  );
+
+  // Ouverture directe d'un projet depuis le tableau de bord (/studio?projet=…).
+  useEffect(() => {
+    if (initialProjectId) open(initialProjectId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProjectId]);
 
   function reset() {
     setProject(null); setPicked(undefined); setError(undefined); setInput(""); setMenu(false);
@@ -220,6 +238,7 @@ export default function Studio({ conversations, styles: initialStyles, durations
         </button>
       </div>
       <nav className="mt-5 space-y-0.5 px-3 text-sm">
+        <Link href="/tableau-de-bord" className="flex items-center gap-3 rounded-xl px-3 py-2 text-muted hover:bg-bg hover:text-ink"><LayoutGrid size={16} /> Tableau de bord</Link>
         <Link href="/mes-videos" className="flex items-center gap-3 rounded-xl px-3 py-2 text-muted hover:bg-bg hover:text-ink"><Film size={16} /> Mes vidéos</Link>
         <Link href="/tarifs" className="flex items-center gap-3 rounded-xl px-3 py-2 text-muted hover:bg-bg hover:text-ink"><LayoutGrid size={16} /> Styles & tarifs</Link>
       </nav>
@@ -228,12 +247,12 @@ export default function Studio({ conversations, styles: initialStyles, durations
           <div key={lbl} className="mb-4">
             <p className="px-3 pb-1 text-xs font-medium text-muted">{lbl}</p>
             {items.map((c) => (
-              <button key={c.id} onClick={() => open(c.id)}
-                className={`block w-full truncate rounded-xl px-3 py-2 text-left text-sm hover:bg-bg ${c.id === project?.id ? "bg-bg font-semibold" : "text-ink/80"}`}>{c.title}</button>
+              <ChatRow key={c.id} id={c.id} title={c.title} active={c.id === project?.id} onOpen={() => open(c.id)} rename={chats.rename} remove={chats.remove} />
             ))}
           </div>
         ))}
         {!convs.length && <p className="px-3 text-sm text-muted">Tes projets apparaîtront ici.</p>}
+        {chats.error && <p className="mx-3 mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{chats.error}</p>}
       </div>
       <div className="m-4 rounded-2xl border border-line bg-bg p-4">
         <p className="flex items-center gap-2 text-xs text-muted"><Wallet size={14} /> Mes pubs restantes</p>

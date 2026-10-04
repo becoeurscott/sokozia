@@ -3,7 +3,7 @@ import { getSession } from "@/lib/insforge";
 import { SignUpForm } from "@/components/AuthForms";
 
 export default async function Page() {
-  if ((await getSession()).user) redirect("/studio");
+  if ((await getSession()).user) redirect("/tableau-de-bord");
   return (
     <div className="mx-auto max-w-md px-4 py-12">
       <h1 className="mb-2 text-3xl font-extrabold">Crée ton compte</h1>
