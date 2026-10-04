@@ -75,3 +75,20 @@ export async function signOut() {
   await auth.signOut();
   redirect("/");
 }
+
+// Connexion / inscription avec Google : on prépare l'URL Google côté serveur (PKCE) puis on redirige.
+export async function signInWithGoogle(form: FormData) {
+  const store = await cookies();
+  const next = String(form.get("next") ?? "");
+  const auth = createAuthActions({ cookies: store });
+  const { data, error } = await auth.signInWithOAuth("google", {
+    redirectTo: new URL("/api/auth/callback", process.env.NEXT_PUBLIC_APP_URL).toString(),
+    additionalParams: { prompt: "select_account" },
+    skipBrowserRedirect: true,
+  });
+  if (error || !data?.url || !data.codeVerifier) redirect("/connexion?error=google");
+  const opts = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/", maxAge: 600 };
+  store.set("insforge_code_verifier", data.codeVerifier, opts);
+  if (/^\/[^/\\]/.test(next)) store.set("sz_next", next, opts);
+  redirect(data.url);
+}
