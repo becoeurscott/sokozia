@@ -26,18 +26,18 @@ export default function PricingPicker({ rows, loggedIn }: { rows: PriceRow[]; lo
   const dur = current.duration;
   return (
     <div className="mt-10">
-      <div className="mx-auto mb-3 flex w-fit gap-1 rounded-full border border-line bg-card p-1">
-        {row.byDuration.length > 1 && row.byDuration.map((d) => (
+      {row.byDuration.length > 1 && <div className="mx-auto mb-3 flex w-fit gap-1 rounded-full border border-line bg-card p-1">
+        {row.byDuration.map((d) => (
           <button key={d.duration} onClick={() => setDuration(d.duration)}
             className={`rounded-full px-6 py-2.5 text-sm font-bold transition ${d.duration === dur ? "bg-brand text-white" : "text-muted hover:text-ink"}`}>
             Pub de {d.duration} secondes
           </button>
         ))}
-      </div>
-      <div className="mx-auto flex w-full max-w-2xl gap-1 overflow-x-auto rounded-full border border-line bg-card p-1">
+      </div>}
+      <div className="mx-auto grid w-full max-w-2xl grid-cols-4 gap-1 rounded-full border border-line bg-card p-1">
         {rows.map((r) => (
           <button key={r.id} onClick={() => setId(r.id)}
-            className={`flex-1 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition ${r.id === row.id ? "bg-ink text-white" : "text-muted hover:text-ink"}`}>
+            className={`truncate rounded-full px-1 py-2.5 text-xs font-semibold sm:px-4 sm:text-sm transition ${r.id === row.id ? "bg-ink text-white" : "text-muted hover:text-ink"}`}>
             {r.name}
           </button>
         ))}

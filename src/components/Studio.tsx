@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ArrowUp, Check, Film, ImagePlus, LayoutGrid, Loader2, Menu, Play, Plus, RefreshCw, Sparkles, Wallet, X,
+  ArrowUp, Check, Film, FolderOpen, ImagePlus, LayoutGrid, Loader2, Play, Plus, RefreshCw, Sparkles, Wallet, X,
 } from "lucide-react";
 import type { ProjectState } from "@/lib/project";
 import { CREATORS, creatorFiles } from "@/content/creators";
 import { ChatRow, useChatActions } from "./ChatActions";
+import { useVisualViewport } from "./useVisualViewport";
 
 type StyleOpt = { price: string; remaining: number };
 type Style = { id: string; name: string; description: string; options: Record<number, StyleOpt | undefined> };
@@ -97,6 +98,9 @@ export default function Studio({ conversations, styles: initialStyles, durations
   const [error, setError] = useState<string>();
   const [menu, setMenu] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const vv = useVisualViewport();
+  const HEADER = 56;
 
   const apply = useCallback((s: ProjectState & { error?: string }) => {
     if (s.error) setError(s.error);
@@ -166,6 +170,7 @@ export default function Studio({ conversations, styles: initialStyles, durations
     const text = (preset ?? input).trim();
     if ((!text && !photos.length) || busy) return;
     setInput("");
+    if (box.current) box.current.style.height = "auto";
     const sent = photos;
     setPhotos([]);
     if (!project) {
@@ -265,7 +270,8 @@ export default function Studio({ conversations, styles: initialStyles, durations
   );
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-14 z-30 flex bg-[#f6f5f3]">
+    <div className="fixed inset-x-0 bottom-0 top-14 z-30 flex bg-[#f6f5f3]"
+      style={vv ? { top: vv.top + HEADER, height: vv.height - HEADER, bottom: "auto" } : undefined}>
       <div className="hidden lg:block">{sidebar}</div>
       {menu && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
@@ -277,7 +283,7 @@ export default function Studio({ conversations, styles: initialStyles, durations
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between gap-3 px-4 py-3 sm:px-8">
           <div className="flex min-w-0 items-center gap-2">
-            <button onClick={() => setMenu(true)} className="rounded-lg p-2 lg:hidden" aria-label="Menu"><Menu size={20} /></button>
+            <button onClick={() => setMenu(true)} className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-card px-3 py-1.5 text-xs font-semibold lg:hidden" aria-label="Mes projets"><FolderOpen size={14} /> Projets</button>
             <p className="truncate font-bold">{project?.title ?? "Nouvelle pub"}</p>
           </div>
           {project && (
@@ -467,7 +473,7 @@ export default function Studio({ conversations, styles: initialStyles, durations
         </div>
 
         {composerOn && (
-          <div className="px-4 pb-4 sm:px-8">
+          <div className="px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-8 sm:pb-4">
             {photos.length > 0 && (
               <div className="mx-auto mb-2 flex max-w-3xl gap-2">
                 {photos.map((u) => (
@@ -486,10 +492,13 @@ export default function Studio({ conversations, styles: initialStyles, durations
                   {uploading ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}<span className="hidden sm:inline">Photo</span>
                 </label>
               ) : <Sparkles size={16} className="mb-2.5 ml-1 shrink-0 text-muted" />}
-              <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={1} disabled={busy}
+              <textarea ref={box} value={input} rows={1} disabled={busy}
+                onChange={(e) => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`; }}
+                onFocus={() => setTimeout(() => bottom.current?.scrollIntoView({ block: "end" }), 300)}
+                enterKeyHint="send"
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
                 placeholder={intake ? "Décris ton produit…" : customCreator ? "Ou décris un créateur sur mesure…" : project?.options?.length ? "Ou décris ta propre idée…" : "Dis ce qu'il faut changer…"}
-                className="max-h-40 min-h-[40px] w-full resize-none bg-transparent py-2 text-[15px] outline-none placeholder:text-muted" />
+                className="max-h-40 min-h-[40px] w-full resize-none bg-transparent py-2 text-base outline-none placeholder:text-muted" />
               <button disabled={busy || uploading || (!input.trim() && !photos.length)} className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
                 <ArrowUp size={15} /> Envoyer
               </button>

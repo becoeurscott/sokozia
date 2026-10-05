@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { getSession } from "@/lib/insforge";
@@ -7,6 +7,9 @@ import NavMenu from "@/components/NavMenu";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"] });
+
+// interactive-widget : sur Android, le clavier réduit la page au lieu de la recouvrir.
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content", themeColor: "#fffaf3" };
 
 export const metadata: Metadata = {
   title: "Sokozia — Vidéos pub UGC par IA",

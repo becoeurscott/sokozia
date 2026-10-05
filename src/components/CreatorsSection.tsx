@@ -13,14 +13,15 @@ export default function CreatorsSection() {
       <p className="text-center text-sm font-bold uppercase tracking-widest text-brand">Nos créateurs</p>
       <h2 className="mt-2 text-center text-3xl font-extrabold sm:text-4xl">{CREATORS.length} visages africains pour présenter ton produit</h2>
       <p className="mx-auto mt-3 max-w-xl text-center text-muted">
+        <span className="mb-1 block text-xs font-semibold text-brand sm:hidden">Fais glisser pour tous les voir →</span>
         Choisis la personne qui parle à tes clients. Son visage reste le même dans toutes tes pubs.
       </p>
-      <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+      <div className="-mx-4 mt-10 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-8">
         {CREATORS.map((c) => {
           const f = creatorFiles(c.id);
           return (
             <button key={c.id} onClick={() => setPlaying(playing === c.id ? undefined : c.id)}
-              className="group overflow-hidden rounded-2xl border border-line bg-card text-left">
+              className="group w-36 shrink-0 snap-start overflow-hidden rounded-2xl border border-line bg-card text-left sm:w-auto">
               <div className="relative aspect-[3/4] bg-ink">
                 {playing === c.id
                   ? <video src={f.intro} poster={f.portrait} autoPlay playsInline onEnded={() => setPlaying(undefined)} className="h-full w-full object-cover" />
