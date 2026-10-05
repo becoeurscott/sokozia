@@ -92,3 +92,19 @@ export async function signInWithGoogle(form: FormData) {
   if (/^\/[^/\\]/.test(next)) store.set("sz_next", next, opts);
   redirect(data.url);
 }
+
+// Mise à jour du profil depuis la page « Mon compte ».
+export async function updateProfile(_: State, form: FormData): Promise<State> {
+  const { user } = await getSession();
+  if (!user) redirect("/connexion?next=/compte");
+  const name = String(form.get("name") ?? "").trim().slice(0, 80);
+  const country = String(form.get("country") ?? "CM");
+  const phone = String(form.get("phone") ?? "").replace(/[^\d+ ]/g, "").trim().slice(0, 20);
+  if (!name) return { error: "Ton nom ne peut pas être vide." };
+  const { COUNTRIES } = await import("@/lib/pricing");
+  if (!COUNTRIES[country]) return { error: "Pays invalide." };
+  const { error } = await adminClient().database.from("profiles")
+    .update({ full_name: name, country, phone: phone || null }).eq("id", user.id);
+  if (error) return { error: "Enregistrement impossible. Réessaie." };
+  return { email: "saved" };
+}

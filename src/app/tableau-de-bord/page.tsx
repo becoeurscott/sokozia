@@ -49,6 +49,7 @@ export default async function Page() {
                 <Sparkles size={18} /> Créer une pub
               </Link>
               <Link href="/mes-videos" className="inline-flex items-center rounded-full border border-white/20 px-6 py-3.5 font-semibold text-white hover:bg-white/10">Mes vidéos</Link>
+              <Link href="/compte" className="inline-flex items-center rounded-full border border-white/20 px-6 py-3.5 font-semibold text-white hover:bg-white/10">Mon compte</Link>
             </div>
           </div>
           <div className="hidden md:block">
