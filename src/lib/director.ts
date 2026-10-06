@@ -59,20 +59,39 @@ Langue parlée : ${p.language}`;
 
 export const CHARACTER_SHEET_TEMPLATE = `A three-panel character reference sheet composed as one horizontal frame, divided into three equal vertical panels side by side, thin clean separation between panels, the same figure and the same outfit rendered identically across all three. [Identity paragraph: build, skin, hair color/length/texture, makeup register, identity markers, nails. Described ONCE, applies to all three panels.] [Wardrobe paragraph: full outfit head-to-toe, every garment, fabric, color, construction detail, footwear, jewelry. Described ONCE, applies to all three panels.] LEFT PANEL — full body front view, no head, no neck, and no hair. The body stands squared to camera from the shoulders down to [the shoes / the hem], arms relaxed at the sides, hands open and loose, weight even across both feet. There is no head, no neck, and no hair at all — nothing rises above the shoulder line, and no hair falls across the chest or shoulders. The [collar type] of the [garment] holds its own shape at the top of the garment and its opening is an empty dark hollow looking down into the inside of the [garment], with the inner back of the fabric faintly visible inside the opening. The garment reads as if worn by an invisible body — full three-dimensional shape, natural drape, real fabric tension across the chest and shoulders, but nothing emerging from the neckline. No stump, no skin, no cut edge, no anatomy, no blood, no fade, no blur, no ghosting, no transparency in the body. The panel keeps full headroom, generous empty mid-gray backdrop above the shoulders, so the figure sits at the same scale and position in the frame as a normal full-body portrait. CENTER PANEL — full body rear view, head attached. The same figure photographed from directly behind, standing straight, [hair fall from behind], [garment back construction], arms relaxed at the sides, hands loose, weight even across both feet, from the top of the head down to [the shoes / the end of the hem]. RIGHT PANEL — tight chest-up portrait, identity lock. The same figure framed from just above the top of the head down to the collarbones and the very top of the garment only, the face filling most of the panel, a true close-up. Body squared to camera, head level, eyes directly to camera, lips closed and relaxed, neutral controlled expression. [Hair, brows, lashes, lip texture, key identity markers] all clearly readable at close range. 18% neutral gray seamless studio backdrop applied uniformly across all three panels — one single flat uniform value corner to corner in every panel, no seam line, no gradient, no hotspot, no vignette, no falloff to black or white, and the identical gray value in all three panels. Relight from scratch overriding any reference lighting: completely flat shadowless illumination in every panel — one enormous soft frontal source at camera position with matched equal fill from camera-left, camera-right, above, and below, so both sides of the face and body read at exactly the same brightness. No key-and-fill ratio, no modelling, no shadow side, no nose shadow, no under-chin shadow, no rim light, no hair light, no kicker, no specular hotspot. Zero shadow cast onto the background in any panel — the backdrop stays clean flat gray behind and around the figure. No contact shadow, no drop shadow, no ambient occlusion on the floor beneath the feet. Extremely low contrast, even, milky, catalogue-flat, identical in every panel. Form is described by fabric folds, garment structure, and bone structure alone, not by light and shadow. Skin and fabric read matte and velvety, no shine, no gloss, no oily T-zone. Skin renders at its true natural skin tone, identical in value and hue across the face, arms, and body in every panel, never darkened, never tanned, never pale or washed-out or cool-shifted by the background. [Garment colors] render true and consistent across all three panels. Real peach fuzz at the jaw and hairline, real fine even pore texture, subsurface scattering reading as semi-translucent biology, real fabric weave and drape, visible fine metal surface detail on the jewelry, never plastic, never waxy, never harsh. Photographed on a 50mm prime, even sharpness, soft natural film grain. Photographed not generated.`;
 
-async function askJSON<T>(task: string): Promise<T> {
+// Cerveau d'Awa : Claude (via OpenRouter) ; en cas d'échec, repli automatique sur un second modèle.
+const DIRECTOR = process.env.DIRECTOR_MODEL || "anthropic/claude-sonnet-5.5";
+const FALLBACK = process.env.DIRECTOR_FALLBACK_MODEL || "google/gemini-2.5-flash";
+
+function parseJSON<T>(text: string): T {
+  const clean = text.replace(/```(?:json)?/g, "").trim();
+  const start = clean.indexOf("{");
+  const end = clean.lastIndexOf("}");
+  return JSON.parse(start >= 0 && end > start ? clean.slice(start, end + 1) : clean) as T;
+}
+
+async function callModel<T>(model: string, task: string): Promise<T> {
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: process.env.DIRECTOR_MODEL || "google/gemini-2.5-flash",
-      response_format: { type: "json_object" },
+      model,
+      max_tokens: 3000,
+      ...(model.startsWith("anthropic/") ? {} : { response_format: { type: "json_object" } }),
       messages: [{ role: "system", content: BASE }, { role: "user", content: task }],
     }),
   });
   if (!res.ok) throw new Error(`director ${res.status}`);
   const json = await res.json();
-  const text: string = json.choices?.[0]?.message?.content ?? "{}";
-  return JSON.parse(text.replace(/^```(json)?|```$/g, "").trim()) as T;
+  return parseJSON<T>(json.choices?.[0]?.message?.content ?? "{}");
+}
+
+async function askJSON<T>(task: string): Promise<T> {
+  try {
+    return await callModel<T>(DIRECTOR, task);
+  } catch {
+    return callModel<T>(FALLBACK, task);
+  }
 }
 
 const revision = (feedback?: string, previous?: string) =>
