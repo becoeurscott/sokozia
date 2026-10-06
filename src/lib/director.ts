@@ -19,7 +19,19 @@ export type Product = {
   photos: string[];      // URLs des photos produit (peut être vide)
 };
 
-export type Option = { title: string; detail: string };
+export type Option = { title: string; detail: string; format?: string };
+import { FORMATS } from "@/content/formats";
+
+// Règles d'écriture propres à chaque modèle vidéo (Awa écrit le prompt pour le modèle qui va le tourner).
+export function modelGuide(endpoint: string | null | undefined) {
+  const e = endpoint ?? "";
+  if (e.includes("wan-3")) return "Model: Wan 3.0. Be concise and concrete, present tense: who, where, what they do, camera. Put every spoken line in quotes after the speaker. One continuous scene or at most 3 clean cuts. Refer to references as @Image1 (creator), @Image2 (product), @Image3 (location).";
+  if (e.includes("kling")) return "Model: Kling 3.0 image-to-video. The video starts from an opening frame that already shows the creator, product and location: do NOT redescribe their appearance, describe only motion, gestures, facial expression and speech from the first frame. Keep one location, simple handheld camera, no scene change.";
+  if (e.includes("seedance")) return "Model: Seedance. Write a timed shot list ([0-3s], [3-8s]…), explicit camera for each shot (close-up, medium, handheld push-in). Refer to references as @Image1 (creator), @Image2 (product), @Image3 (location). Dialogue in quotes with lip-sync. Clean cuts between shots are fine.";
+  return "Write a clear timed shot list with dialogue in quotes.";
+}
+
+export type StyleBrief = { id: string; name: string; description: string; durations: number[]; price: string };
 
 const BASE = `Tu es "Awa", directrice de création de vidéos UGC pour des commerçants et marques d'Afrique francophone.
 Tu parles un français simple et chaleureux, tu tutoies, phrases courtes, JAMAIS d'emoji, jamais de jargon.
@@ -141,28 +153,31 @@ JSON : {"message": "1 phrase courte", "prompt": "le prompt en anglais"}`);
 export function scriptIdeas(p: Product, duration: number) {
   return askJSON<{ message: string; options: Option[] }>(`${describe(p)}
 
-ÉTAPE 4 — IDÉES. Propose 3 idées de vidéo de ${duration} secondes.
-JSON : {"message": "1 phrase courte", "options": [{"title": "idée en quelques mots", "detail": "1 ligne"}, …3]}`);
+ÉTAPE 4 — IDÉES. Propose 3 idées de vidéo de ${duration} secondes, chacune basée sur un FORMAT différent de cette liste (choisis les plus adaptés au produit) :
+${FORMATS.map((f) => `- ${f.id} : ${f.label} (pour ${f.when})`).join("\n")}
+JSON : {"message": "1 phrase courte", "options": [{"title": "idée en quelques mots", "detail": "1 ligne", "format": "id du format"}, …3]}`);
 }
 
 const WORDS: Record<number, number> = { 8: 18, 15: 35, 30: 70 };
 
-export function writeScript(p: Product, idea: string, duration: number, feedback?: string, previous?: string) {
-  return askJSON<{ message: string; script: string }>(`${describe(p)}
+export function writeScript(p: Product, idea: string, duration: number, styles: StyleBrief[], feedback?: string, previous?: string) {
+  return askJSON<{ message: string; script: string; suggested_style: string; reason: string }>(`${describe(p)}
 
 ÉTAPE 4 — SCRIPT de ${duration} secondes pour l'idée : ${idea}
 Écris en ${p.language}, comme une vraie personne qui parle à une amie, pas comme une pub. ${WORDS[duration] ?? 70} mots parlés MAXIMUM (on parle ~2,5 mots/seconde). Accroche forte dans les 3 premières secondes, puis bénéfice, preuve, appel à l'action.
 Utilise la marque et le nom du produit exactement comme imprimés. Ne dis jamais rien de la liste « À ne jamais dire ».
 Donne seulement le texte parlé, avec les indications de plan entre crochets très courts, ex : [0-3s gros plan].${feedback ? `\n\nSCRIPT PRÉCÉDENT :\n${previous}\n\nCHANGEMENTS DEMANDÉS : ${feedback}` : ""}
-JSON : {"message": "1 phrase courte qui demande au client de valider le script", "script": "le script"}`);
+Ensuite conseille LE style le plus adapté à cette pub parmi ceux disponibles en ${duration} s (qualité voulue, budget, type de produit) :
+${styles.filter((x) => x.durations.includes(duration)).map((x) => `- ${x.id} : ${x.name} — ${x.description} — ${x.price}`).join("\n")}
+JSON : {"message": "1 phrase courte qui demande au client de valider le script", "script": "le script", "suggested_style": "id du style", "reason": "1 phrase simple : pourquoi ce style pour cette pub"}`);
 }
 
 // 5. Vidéo : un prompt pour toute la durée, avec les 3 références.
-export function videoPrompt(p: Product, script: string, duration: number, withRefs: boolean, creator: string) {
+export function videoPrompt(p: Product, script: string, duration: number, withRefs: boolean, creator: string, extra: { guide: string; format?: string }) {
   return askJSON<{ prompt: string }>(`${describe(p)}
 
 ÉTAPE 5 — VIDÉO. Écris UN prompt vidéo verticale 9:16 de ${duration} secondes, style UGC smartphone.
-Créateur (à décrire tel quel dans le prompt) : ${creator}
+Créateur (à décrire tel quel dans le prompt) : ${creator}\n${extra.guide}${extra.format ? `\nFormat de la pub : ${extra.format}` : ""}
 ${withRefs
     ? "La fiche personnage est @Image1, la fiche produit @Image2, la photo du lieu @Image3. Garde le créateur, le produit et le lieu identiques aux références."
     : "La vidéo démarre sur une image d'ouverture qui montre déjà le créateur, le produit et le lieu : garde-les identiques."}

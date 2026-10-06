@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import type { ProjectState } from "@/lib/project";
 import { CREATORS, creatorFiles } from "@/content/creators";
+import { findFormat } from "@/content/formats";
 import { ChatRow, useChatActions } from "./ChatActions";
 import { useVisualViewport } from "./useVisualViewport";
 
@@ -105,6 +106,7 @@ export default function Studio({ conversations, styles: initialStyles, durations
   const apply = useCallback((s: ProjectState & { error?: string }) => {
     if (s.error) setError(s.error);
     if (s.id) setProject(s);
+    if (s.step === "video" && s.suggestedStyle) setPicked((p) => p ?? s.suggestedStyle ?? undefined);
   }, []);
 
   useEffect(() => {
@@ -148,7 +150,7 @@ export default function Studio({ conversations, styles: initialStyles, durations
   async function open(id: string) {
     setMenu(false); setError(undefined); setPicked(undefined);
     const r = await fetch(`/api/project/${id}`).then((r) => r.json()).catch(() => null);
-    if (r?.id) setProject(r);
+    if (r?.id) { setProject(r); if (r.step === "video" && r.suggestedStyle) setPicked(r.suggestedStyle); }
   }
 
   function created(s: ProjectState) {
@@ -404,19 +406,25 @@ export default function Studio({ conversations, styles: initialStyles, durations
                 )}
                 {project.step === "script" && project.options?.length ? (
                   <div className="grid gap-2 sm:grid-cols-3">
-                    {project.options.map((o, i) => (
-                      <button key={i} disabled={busy} onClick={() => act({ action: "pick", index: i })}
-                        className="rounded-2xl border border-line bg-card p-4 text-left hover:border-ink disabled:opacity-50">
-                        <p className="text-xs font-semibold text-muted">Idée {i + 1}</p>
-                        <p className="mt-1 font-bold leading-snug">{o.title}</p>
-                        <p className="mt-1 text-xs text-muted">{o.detail}</p>
-                      </button>
-                    ))}
+                    {project.options.map((o, i) => {
+                      const f = findFormat(o.format);
+                      return (
+                        <button key={i} disabled={busy} onClick={() => act({ action: "pick", index: i })}
+                          className="flex gap-3 rounded-2xl border border-line bg-card p-3 text-left hover:border-ink disabled:opacity-50 sm:flex-col">
+                          {f && <img src={`/showcase/ugc/${f.clip}.jpg`} alt="" className="h-24 w-16 shrink-0 rounded-xl object-cover sm:h-36 sm:w-full" />}
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-muted">Idée {i + 1}{f && <span className="ml-1 rounded-full bg-brand/10 px-2 py-0.5 text-brand">{f.label}</span>}</p>
+                            <p className="mt-1 font-bold leading-snug">{o.title}</p>
+                            <p className="mt-1 text-xs text-muted">{o.detail}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : null}
                 {project.step === "script" && project.script && (
                   <div className="rounded-3xl border border-line bg-card p-5 shadow-sm">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-accent">Script · {project.duration} s · {project.product?.language}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-accent">Script · {project.duration} s{project.format ? ` · ${project.format}` : ""} · {project.product?.language}</p>
                     <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed">{project.script}</p>
                     <button disabled={busy} onClick={() => act({ action: "approve" })}
                       className="mt-4 flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
@@ -429,6 +437,7 @@ export default function Studio({ conversations, styles: initialStyles, durations
                 {project.step === "video" && project.duration && (
                   <div className="space-y-3 rounded-3xl border border-line bg-card p-5 shadow-sm">
                     <p className="font-bold">Choisis le style de ta pub de {project.duration} s</p>
+                    {project.suggestedReason && <p className="rounded-xl bg-accent/10 px-3 py-2 text-sm text-accent"><b>Awa conseille {styles.find((x) => x.id === project.suggestedStyle)?.name ?? "ce style"}</b> : {project.suggestedReason}</p>}
                     <div className="grid gap-2 sm:grid-cols-2">
                       {styles.map((s) => {
                         const o = s.options[project.duration!];
@@ -436,6 +445,7 @@ export default function Studio({ conversations, styles: initialStyles, durations
                           <button key={s.id} onClick={() => setPicked(s.id)} disabled={!o}
                             className={`rounded-2xl border p-4 text-left transition disabled:opacity-40 ${picked === s.id && o ? "border-ink bg-bg ring-1 ring-ink" : "border-line hover:border-ink/40"}`}>
                             <span className="font-bold">{s.name}</span>
+                            {project.suggestedStyle === s.id && <span className="ml-2 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">Conseillé</span>}
                             <p className="mt-1 text-xs leading-relaxed text-muted">{s.description}</p>
                             <p className="mt-2 text-sm">{o ? <><b>{o.price}</b>{o.remaining > 0 && <span className="text-accent"> · {o.remaining} restante{o.remaining > 1 ? "s" : ""}</span>}</> : <>Disponible en {Object.keys(s.options).join(" / ")} s</>}</p>
                           </button>

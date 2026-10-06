@@ -1,7 +1,8 @@
 import { adminClient } from "./insforge";
 import { STYLE_COLS, startVideoJob, type StyleRow } from "./providers";
 import { refundPass } from "./passes";
-import { videoPrompt, framePrompt } from "./director";
+import { videoPrompt, framePrompt, modelGuide } from "./director";
+import { findFormat } from "@/content/formats";
 import { approvedRefs, genImage, loadProject } from "./project";
 
 type FullStyle = StyleRow & { id: string };
@@ -20,7 +21,10 @@ export async function startGeneration(o: { userId: string; conversationId: strin
   if (refs.length < 3) return fail("Il manque une image validée (produit, créateur ou lieu).");
 
   const withRefs = style.provider === "higgsfield" ? style.hf_endpoint?.includes("reference") ?? false : Boolean(style.refs_key);
-  const { prompt } = await videoPrompt(p.product, p.script, p.duration_s, withRefs, p.creator_desc ?? "");
+  const { prompt } = await videoPrompt(p.product, p.script, p.duration_s, withRefs, p.creator_desc ?? "", {
+    guide: modelGuide(style.provider === "higgsfield" ? style.hf_endpoint : style.apiframe_model),
+    format: findFormat(p.format_id)?.direction,
+  });
   const { data: created } = await db.from("videos").insert([{
     created_by: o.userId, conversation_id: p.id, style_id: style.id, duration_s: p.duration_s, prompt, pass_id: o.passId,
   }]).select("id");

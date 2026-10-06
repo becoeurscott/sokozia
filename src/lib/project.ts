@@ -3,6 +3,8 @@ import { getJobStatus, startImageJob } from "./providers";
 import * as awa from "./director";
 import type { ChatTurn, Option, Product } from "./director";
 import { creatorSheetUrl, findCreator } from "@/content/creators";
+import { findFormat } from "@/content/formats";
+import { currencyOf, fmt, loadPricing, planPrice } from "./pricing";
 
 // Projet de pub guidé : produit -> créateur -> lieu -> script -> vidéo.
 // Chaque étape d'image peut être régénérée au plus `max_retries` fois (coût inclus dans le prix).
@@ -15,6 +17,7 @@ export type ProjectRow = {
   id: string; user_id: string; title: string; step: Step; product: Product | null; options: Option[] | null;
   picked: string | null; duration_s: number | null; script: string | null; retries: Record<string, number>;
   photos: string[]; creator_id: string | null; creator_desc: string | null;
+  format_id: string | null; suggested_style: string | null; suggested_reason: string | null;
 };
 
 const db = () => adminClient().database;
@@ -35,7 +38,7 @@ async function update(convId: string, patch: Partial<ProjectRow>) {
 
 export async function loadProject(userId: string, convId: string) {
   const { data } = await db().from("conversations")
-    .select("id, user_id, title, step, product, options, picked, duration_s, script, retries, photos, creator_id, creator_desc")
+    .select("id, user_id, title, step, product, options, picked, duration_s, script, retries, photos, creator_id, creator_desc, format_id, suggested_style, suggested_reason")
     .eq("id", convId).eq("user_id", userId).limit(1);
   return (data?.[0] as ProjectRow) ?? null;
 }
@@ -97,6 +100,7 @@ export async function projectState(p: ProjectRow) {
     id: p.id, title: p.title, step: p.step, options: p.options, picked: p.picked, duration: p.duration_s, script: p.script,
     product: p.product ? { brand: p.product.brand, name: p.product.name, language: p.product.language } : null,
     creatorId: p.creator_id, photos: p.photos ?? [],
+    format: findFormat(p.format_id)?.label ?? null, suggestedStyle: p.suggested_style, suggestedReason: p.suggested_reason,
     images: { product: pub(imgs.product), creator: pub(imgs.creator), location: pub(imgs.location) },
     retriesLeft: Math.max(0, maxRetries - (p.retries?.[p.step] ?? 0)),
     messages: (msgs ?? []) as { role: string; content: string }[],
@@ -135,6 +139,24 @@ async function intake(p: ProjectRow) {
   await update(p.id, { product, title: `${product.brand} ${product.name}`.trim().slice(0, 60) });
   const sheet = await awa.productSheetPrompt(product);
   await genImage(p.id, "product", sheet.prompt, "16:9", product.photos);
+}
+
+// Styles disponibles avec leur prix (1 pub), pour qu'Awa conseille le plus adapté.
+async function styleBriefs(userId: string): Promise<awa.StyleBrief[]> {
+  const [pricing, { data: prof }] = await Promise.all([
+    loadPricing(),
+    db().from("profiles").select("country").eq("id", userId).limit(1),
+  ]);
+  const cur = currencyOf(prof?.[0]?.country ?? "CM");
+  return pricing.styles.map((st) => ({
+    id: st.id, name: st.name_fr, description: st.description_fr, durations: st.durations,
+    price: st.durations.map((d) => `${d} s : ${fmt(planPrice(pricing, "single", st, d, cur), cur)}`).join(", "),
+  }));
+}
+
+async function saveScript(p: ProjectRow, r: { message: string; script: string; suggested_style?: string; reason?: string }) {
+  await update(p.id, { script: r.script, suggested_style: r.suggested_style ?? null, suggested_reason: r.reason ?? null });
+  await say(p.id, r.message);
 }
 
 const IMAGE_STEP: Partial<Record<Step, ImageKind>> = { product: "product", creator: "creator", location: "location" };
@@ -208,9 +230,8 @@ export async function act(p: ProjectRow, a: { action: string; text?: string; ind
       return;
     }
     if (p.step === "script" && p.script && text) {
-      const r = await awa.writeScript(prod, p.picked ?? "", p.duration_s ?? 15, text, p.script);
-      await update(p.id, { script: r.script });
-      await say(p.id, r.message);
+      const r = await awa.writeScript(prod, p.picked ?? "", p.duration_s ?? 15, await styleBriefs(p.user_id), text, p.script);
+      await saveScript(p, r);
       return;
     }
     throw new Error("Rien à modifier pour l'instant.");
@@ -218,9 +239,9 @@ export async function act(p: ProjectRow, a: { action: string; text?: string; ind
 
   // Choisir une des 3 options (ou proposer la sienne).
   if (a.action === "pick") {
-    const choice = typeof a.index === "number" && p.options?.[a.index]
-      ? `${p.options[a.index].title} — ${p.options[a.index].detail}`
-      : text;
+    const opt = typeof a.index === "number" ? p.options?.[a.index] : undefined;
+    const fmtDef = findFormat(opt?.format);
+    const choice = opt ? `${opt.title} — ${opt.detail}${fmtDef ? ` (format : ${fmtDef.label})` : ""}` : text;
     if (!choice) throw new Error("Choisis une option ou écris ta propre idée.");
     await say(p.id, choice, "user");
     await update(p.id, { picked: choice, options: null });
@@ -230,9 +251,9 @@ export async function act(p: ProjectRow, a: { action: string; text?: string; ind
       await say(p.id, r.message);
       await genImage(p.id, p.step, r.prompt, "16:9", r.refs);
     } else if (p.step === "script") {
-      const r = await awa.writeScript(prod, choice, p.duration_s ?? 15);
-      await update(p.id, { script: r.script });
-      await say(p.id, r.message);
+      if (fmtDef) await update(p.id, { format_id: fmtDef.id });
+      const r = await awa.writeScript(prod, choice, p.duration_s ?? 15, await styleBriefs(p.user_id));
+      await saveScript(p, r);
     }
     return;
   }
