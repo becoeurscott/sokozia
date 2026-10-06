@@ -8,9 +8,11 @@ import { loadProject } from "@/lib/project";
 export async function POST(req: Request) {
   const { user, profile } = await getSession();
   if (!user || !profile) return NextResponse.json({ error: "Connecte-toi d'abord." }, { status: 401 });
-  const { conversationId, styleId } = (await req.json()) as { conversationId: string; styleId: string };
+  const body = (await req.json()) as { conversationId: string; styleId?: string };
+  const conversationId = body.conversationId;
   const p = await loadProject(user.id, conversationId);
   if (!p?.duration_s) return NextResponse.json({ error: "Projet introuvable." }, { status: 404 });
+  const styleId = body.styleId || p.style_id || "";
 
   const { data: styles } = await adminClient().database.from("styles").select("durations").eq("id", styleId).eq("active", true).limit(1);
   if (!((styles?.[0]?.durations as number[]) ?? []).map(Number).includes(p.duration_s))

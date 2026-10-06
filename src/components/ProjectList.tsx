@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ChatRow, useChatActions } from "./ChatActions";
 
 const STEP: Record<string, string> = {
-  product: "Produit", creator: "Créateur", location: "Lieu", script: "Script", video: "Vidéo", done: "Terminé",
+  product: "Produit", creator: "Créateur", format: "Format", location: "Lieu", style: "Style", preview: "Aperçu", video: "Vidéo", done: "Terminé",
 };
 
 // Liste des projets du tableau de bord : ouvrir, renommer, supprimer.

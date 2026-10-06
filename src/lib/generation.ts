@@ -3,7 +3,7 @@ import { STYLE_COLS, startVideoJob, type StyleRow } from "./providers";
 import { refundPass } from "./passes";
 import { videoPrompt, framePrompt, modelGuide } from "./director";
 import { findFormat } from "@/content/formats";
-import { approvedRefs, genImage, loadProject } from "./project";
+import { approvedFrame, approvedRefs, genImage, loadProject } from "./project";
 
 type FullStyle = StyleRow & { id: string };
 
@@ -14,7 +14,8 @@ export async function startGeneration(o: { userId: string; conversationId: strin
 
   const p = await loadProject(o.userId, o.conversationId);
   if (!p || p.step !== "video" || !p.script || !p.duration_s || !p.product) return fail("Termine d'abord les étapes du projet.");
-  const { data: styles } = await db.from("styles").select(STYLE_COLS).eq("id", o.styleId).limit(1);
+  const styleId = o.styleId || p.style_id || "";
+  const { data: styles } = await db.from("styles").select(STYLE_COLS).eq("id", styleId).limit(1);
   const style = styles?.[0] as FullStyle | undefined;
   if (!style) return fail("Style introuvable.");
   const refs = await approvedRefs(p.id);
@@ -35,12 +36,17 @@ export async function startGeneration(o: { userId: string; conversationId: strin
       const jobId = await startVideoJob(style, prompt, p.duration_s, { refs });
       await db.from("videos").update({ apiframe_task_id: jobId, status: "processing" }).eq("id", videoId);
     } else {
-      // Pas de références pour ce modèle : on crée d'abord l'image d'ouverture (créateur + lieu + produit),
-      // la vidéo démarre dans syncVideo dès qu'elle est prête.
-      const [creator, product, location] = refs;
-      const f = await framePrompt(p.product, p.script, p.creator_desc ?? "");
-      const frameId = await genImage(p.id, "frame", f.prompt, "9:16", [creator, location, product]);
-      await db.from("videos").update({ image_url: `frame:${frameId}` }).eq("id", videoId);
+      // Pas de références pour ce modèle : la vidéo part de l'image d'aperçu validée (créateur + lieu + produit).
+      const frame = await approvedFrame(p.id);
+      if (frame) {
+        const jobId = await startVideoJob(style, prompt, p.duration_s, { startImage: frame });
+        await db.from("videos").update({ apiframe_task_id: jobId, status: "processing", image_url: frame }).eq("id", videoId);
+      } else {
+        const [creator, product, location] = refs;
+        const f = await framePrompt(p.product, p.script, p.creator_desc ?? "");
+        const frameId = await genImage(p.id, "frame", f.prompt, "9:16", [creator, location, product]);
+        await db.from("videos").update({ image_url: `frame:${frameId}` }).eq("id", videoId);
+      }
     }
     await db.from("conversations").update({ step: "done" }).eq("id", p.id);
   } catch (e) {

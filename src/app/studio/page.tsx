@@ -18,7 +18,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
   const left = (styleId: string, d: number) =>
     passes.filter((p) => p.style_id === styleId && p.duration_s === d).reduce((n, p) => n + p.remaining, 0);
   const styles = pricing.styles.map((s) => ({
-    id: s.id, name: s.name_fr, description: s.description_fr,
+    id: s.id, name: s.name_fr, description: s.description_fr, quality: s.quality_fr, durations: s.durations,
+    sample: s.sample_clip ? { poster: `/showcase/ugc/${s.sample_clip}.jpg`, clip: `/showcase/ugc/${s.sample_clip}.mp4` } : null,
     options: Object.fromEntries(s.durations.map((d) => [d, {
       price: fmt(planPrice(pricing, "single", s, d, currency), currency),
       remaining: left(s.id, d),
@@ -29,7 +30,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
   return (
     <Studio
       conversations={(convs ?? []) as { id: string; title: string; created_at: string }[]}
-      styles={styles} durations={pricing.durations} packs={packs} isAdmin={profile.is_admin}
+      styles={styles} packs={packs} isAdmin={profile.is_admin}
       firstName={profile.full_name.split(" ")[0]}
       initialProjectId={projet}
     />

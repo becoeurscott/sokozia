@@ -19,14 +19,14 @@ export const PLAN_LABELS: Record<Plan, string> = {
   monthly: "Abonnement mensuel",
 };
 
-export type PricedStyle = { id: string; name_fr: string; description_fr: string; durations: number[]; cost_usd_per_s: number };
+export type PricedStyle = { id: string; name_fr: string; description_fr: string; durations: number[]; cost_usd_per_s: number; sample_clip: string | null; quality_fr: string };
 
 // Lecture serveur uniquement (le coût réel n'est jamais envoyé tel quel au navigateur).
 export async function loadPricing() {
   const db = adminClient().database;
   const [{ data: settings }, { data: styles }] = await Promise.all([
     db.from("settings").select("key, value"),
-    db.from("styles").select("id, name_fr, description_fr, durations, cost_usd_per_s, sort").eq("active", true).order("sort"),
+    db.from("styles").select("id, name_fr, description_fr, durations, cost_usd_per_s, sample_clip, quality_fr, sort").eq("active", true).order("sort"),
   ]);
   const s = Object.fromEntries((settings ?? []).map((r: { key: string; value: unknown }) => [r.key, r.value]));
   const parsed: PricedStyle[] = (styles ?? []).map((st: PricedStyle) => ({

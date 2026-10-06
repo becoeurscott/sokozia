@@ -233,3 +233,49 @@ export function framePrompt(p: Product, script: string, creator: string) {
 Écris le prompt d'UNE image verticale 9:16, premier plan de la vidéo : le créateur de @Image1 (${creator}) dans le lieu de @Image2, tenant le produit de @Image3, cadrage selfie smartphone naturel, identiques aux références. Le premier plan du script est : ${script.slice(0, 200)}
 JSON : {"prompt": "le prompt en anglais"}`);
 }
+
+// ---- Parcours visuel : Awa propose, le client clique ----
+
+import { CREATORS } from "@/content/creators";
+
+// 2. Trois créateurs du catalogue qui collent au produit et à l'acheteur.
+export function creatorPicks(p: Product) {
+  return askJSON<{ message: string; picks: { id: string; reason: string }[] }>(`${describe(p)}
+
+ÉTAPE 2 — CRÉATEUR. Choisis les 3 créateurs du catalogue les plus adaptés à ce produit et à ses acheteurs (pays, langue, spécialité, âge, genre). Catalogue :
+${CREATORS.map((c) => `- ${c.id} : ${c.name}, ${c.age} ans, ${c.gender === "female" ? "femme" : "homme"}, ${c.country}, parle ${c.languages.join(" et ")}, spécialité ${c.specialty}. ${c.bio}`).join("\n")}
+JSON : {"message": "1 phrase courte qui présente tes 3 choix", "picks": [{"id": "creator_…", "reason": "1 phrase simple : pourquoi ce créateur pour ce produit"}, …3]}`);
+}
+
+// 3. Trois formats de pub (parmi les 10 exemples) adaptés au produit.
+export function formatPicks(p: Product, creator: string) {
+  return askJSON<{ message: string; picks: { id: string; reason: string }[] }>(`${describe(p)}
+Créateur : ${creator}
+
+ÉTAPE 3 — FORMAT. Choisis les 3 formats de pub les plus adaptés parmi :
+${FORMATS.map((f) => `- ${f.id} : ${f.label} (pour ${f.when})`).join("\n")}
+JSON : {"message": "1 phrase courte", "picks": [{"id": "id du format", "reason": "1 phrase simple : pourquoi ce format pour ce produit"}, …3]}`);
+}
+
+// 5. Style et durée conseillés, avec le prix, une fois tout le reste connu.
+export function styleAdvice(p: Product, creator: string, format: string, location: string, styles: StyleBrief[]) {
+  return askJSON<{ message: string; style: string; duration: number; reason: string }>(`${describe(p)}
+Créateur : ${creator}
+Format : ${format}
+Lieu : ${location}
+
+ÉTAPE 5 — STYLE ET DURÉE. Conseille LE style et LA durée les plus adaptés à cette pub (qualité voulue, type de produit, budget raisonnable pour un commerçant africain). Styles disponibles :
+${styles.map((x) => `- ${x.id} : ${x.name} — ${x.description} — durées et prix : ${x.price}`).join("\n")}
+JSON : {"message": "1 phrase courte qui invite à choisir le style", "style": "id du style", "duration": 15, "reason": "1 phrase simple : pourquoi ce style et cette durée"}`);
+}
+
+// 6. Image d'aperçu 9:16 : à quoi ressemblera la pub (créateur + produit + lieu, dans l'esprit du format).
+export function previewPrompt(p: Product, shots: Shot[], creator: string, format?: string) {
+  const first = shots[0];
+  return askJSON<{ prompt: string }>(`${describe(p)}
+
+APERÇU. Écris le prompt d'UNE image verticale 9:16, photo smartphone réaliste : le créateur de @Image1 (${creator}) dans le lieu de @Image2, avec le produit de @Image3 bien visible, identiques aux références.${format ? ` Esprit du format : ${format}` : ""}
+Elle illustre le premier plan de la pub : ${first ? `[${first.time} · ${first.camera}] ${first.action}` : "le créateur présente le produit"}.
+Expression naturelle, lumière du lieu, aucun texte à l'écran.
+JSON : {"prompt": "le prompt en anglais"}`);
+}
