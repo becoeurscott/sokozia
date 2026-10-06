@@ -1,7 +1,7 @@
 import { adminClient } from "./insforge";
 import { getJobStatus, startImageJob } from "./providers";
 import * as awa from "./director";
-import type { ChatTurn, Option, Product } from "./director";
+import type { ChatTurn, Option, Product, Shot } from "./director";
 import { creatorSheetUrl, findCreator } from "@/content/creators";
 import { findFormat } from "@/content/formats";
 import { currencyOf, fmt, loadPricing, planPrice } from "./pricing";
@@ -17,7 +17,7 @@ export type ProjectRow = {
   id: string; user_id: string; title: string; step: Step; product: Product | null; options: Option[] | null;
   picked: string | null; duration_s: number | null; script: string | null; retries: Record<string, number>;
   photos: string[]; creator_id: string | null; creator_desc: string | null;
-  format_id: string | null; suggested_style: string | null; suggested_reason: string | null;
+  format_id: string | null; suggested_style: string | null; suggested_reason: string | null; shots: Shot[] | null;
 };
 
 const db = () => adminClient().database;
@@ -38,7 +38,7 @@ async function update(convId: string, patch: Partial<ProjectRow>) {
 
 export async function loadProject(userId: string, convId: string) {
   const { data } = await db().from("conversations")
-    .select("id, user_id, title, step, product, options, picked, duration_s, script, retries, photos, creator_id, creator_desc, format_id, suggested_style, suggested_reason")
+    .select("id, user_id, title, step, product, options, picked, duration_s, script, retries, photos, creator_id, creator_desc, format_id, suggested_style, suggested_reason, shots")
     .eq("id", convId).eq("user_id", userId).limit(1);
   return (data?.[0] as ProjectRow) ?? null;
 }
@@ -100,6 +100,7 @@ export async function projectState(p: ProjectRow) {
     id: p.id, title: p.title, step: p.step, options: p.options, picked: p.picked, duration: p.duration_s, script: p.script,
     product: p.product ? { brand: p.product.brand, name: p.product.name, language: p.product.language } : null,
     creatorId: p.creator_id, photos: p.photos ?? [],
+    shots: p.shots ?? null,
     format: findFormat(p.format_id)?.label ?? null, suggestedStyle: p.suggested_style, suggestedReason: p.suggested_reason,
     images: { product: pub(imgs.product), creator: pub(imgs.creator), location: pub(imgs.location) },
     retriesLeft: Math.max(0, maxRetries - (p.retries?.[p.step] ?? 0)),
@@ -154,8 +155,18 @@ async function styleBriefs(userId: string): Promise<awa.StyleBrief[]> {
   }));
 }
 
-async function saveScript(p: ProjectRow, r: { message: string; script: string; suggested_style?: string; reason?: string }) {
-  await update(p.id, { script: r.script, suggested_style: r.suggested_style ?? null, suggested_reason: r.reason ?? null });
+// Nettoie un découpage (venant d'Awa ou modifié par le client).
+function cleanShots(raw: unknown): Shot[] {
+  if (!Array.isArray(raw)) return [];
+  const t = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
+  return raw.slice(0, 8).map((x) => ({ time: t(x?.time, 12), camera: t(x?.camera, 80), action: t(x?.action, 300), line: t(x?.line, 300) }))
+    .filter((x) => x.action || x.line);
+}
+
+async function saveScript(p: ProjectRow, r: { message: string; shots: Shot[]; suggested_style?: string; reason?: string }) {
+  const shots = cleanShots(r.shots);
+  if (!shots.length) throw new Error("Awa n'a pas réussi à écrire le découpage, réessaie.");
+  await update(p.id, { shots, script: awa.shotsToScript(shots), suggested_style: r.suggested_style ?? null, suggested_reason: r.reason ?? null });
   await say(p.id, r.message);
 }
 
@@ -184,7 +195,7 @@ async function imageFor(p: ProjectRow, kind: ImageKind, feedback?: string, previ
   return { ...r, refs: [] };
 }
 
-export async function act(p: ProjectRow, a: { action: string; text?: string; index?: number; duration?: number; photos?: string[]; creatorId?: string }) {
+export async function act(p: ProjectRow, a: { action: string; text?: string; index?: number; duration?: number; photos?: string[]; creatorId?: string; shots?: unknown }) {
   const text = (a.text ?? "").trim().slice(0, 1000);
   const kind = IMAGE_STEP[p.step];
 
@@ -230,7 +241,7 @@ export async function act(p: ProjectRow, a: { action: string; text?: string; ind
       return;
     }
     if (p.step === "script" && p.script && text) {
-      const r = await awa.writeScript(prod, p.picked ?? "", p.duration_s ?? 15, await styleBriefs(p.user_id), text, p.script);
+      const r = await awa.writeScript(prod, p.picked ?? "", p.duration_s ?? 15, await styleBriefs(p.user_id), text, p.shots ?? p.script ?? "");
       await saveScript(p, r);
       return;
     }
@@ -293,6 +304,15 @@ export async function act(p: ProjectRow, a: { action: string; text?: string; ind
     }
     return;
   }
+  // Le client modifie lui-même le découpage (texte des plans).
+  if (a.action === "editShots" && p.step === "script" && p.shots) {
+    const shots = cleanShots(a.shots);
+    if (!shots.length) throw new Error("Le découpage ne peut pas être vide.");
+    await update(p.id, { shots, script: awa.shotsToScript(shots) });
+    await say(p.id, "J'ai modifié le découpage.", "user");
+    return;
+  }
+
   // Une autre version de la pub : on revient au choix du style (mêmes images et même script).
   if (a.action === "again" && p.step === "done") {
     await update(p.id, { step: "video" });

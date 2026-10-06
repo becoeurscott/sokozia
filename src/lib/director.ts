@@ -179,16 +179,35 @@ JSON : {"message": "1 phrase courte", "options": [{"title": "idée en quelques m
 
 const WORDS: Record<number, number> = { 8: 18, 15: 35, 30: 70 };
 
-export function writeScript(p: Product, idea: string, duration: number, styles: StyleBrief[], feedback?: string, previous?: string) {
-  return askJSON<{ message: string; script: string; suggested_style: string; reason: string }>(`${describe(p)}
+// Un plan du découpage : moment, cadrage, ce qu'on voit, ce que dit le créateur.
+export type Shot = { time: string; camera: string; action: string; line: string };
 
-ÉTAPE 4 — SCRIPT de ${duration} secondes pour l'idée : ${idea}
-Écris en ${p.language}, comme une vraie personne qui parle à une amie, pas comme une pub. ${WORDS[duration] ?? 70} mots parlés MAXIMUM (on parle ~2,5 mots/seconde). Accroche forte dans les 3 premières secondes, puis bénéfice, preuve, appel à l'action.
+// Texte lisible du découpage (utilisé pour l'historique et la vidéo).
+export const shotsToScript = (shots: Shot[]) =>
+  shots.map((x) => `[${x.time} · ${x.camera}] ${x.action}${x.line ? `\n« ${x.line} »` : ""}`).join("\n\n");
+
+export function writeScript(p: Product, idea: string, duration: number, styles: StyleBrief[], feedback?: string, previous?: Shot[] | string) {
+  return askJSON<{ message: string; shots: Shot[]; suggested_style: string; reason: string }>(`${describe(p)}
+
+ÉTAPE 4 — DÉCOUPAGE PLAN PAR PLAN d'une pub de ${duration} secondes, d'après l'idée et la description du client : ${idea}
+Pense comme une réalisatrice UGC : ${duration <= 8 ? "2 plans" : duration <= 15 ? "3 à 4 plans" : "5 à 6 plans"} qui couvrent exactement 0 à ${duration} secondes, sans trou.
+Pour chaque plan :
+- time : « 0-3s », « 3-7s »…
+- camera : cadrage simple en français (gros plan, plan moyen, plan large, gros plan sur le produit, selfie, vue du dessus…) et mouvement éventuel
+- action : ce qu'on voit, en 1 phrase concrète en français (geste, lieu, état du produit)
+- line : ce que dit le créateur, en ${p.language}, naturel comme à une amie (peut être vide)
+Le texte parlé total fait ${WORDS[duration] ?? 70} mots MAXIMUM (~2,5 mots/seconde). Accroche forte dans les 3 premières secondes, puis bénéfice, preuve, appel à l'action.
 Utilise la marque et le nom du produit exactement comme imprimés. Ne dis jamais rien de la liste « À ne jamais dire ».
-Donne seulement le texte parlé, avec les indications de plan entre crochets très courts, ex : [0-3s gros plan].${feedback ? `\n\nSCRIPT PRÉCÉDENT :\n${previous}\n\nCHANGEMENTS DEMANDÉS : ${feedback}` : ""}
+Prévois les états du produit (fermé/ouvert, emballé/porté…) pour que rien n'apparaisse de nulle part. Aucun texte affiché à l'écran (pas de prix, numéro ou slogan écrit) : tout ce qui est important est DIT par le créateur. N'utilise jamais de crochets ni de valeur à remplir : si une info (prix, numéro, adresse) n'a pas été donnée par le client, reste général (« écris-nous sur WhatsApp »).${feedback ? `
+
+DÉCOUPAGE PRÉCÉDENT :
+${typeof previous === "string" ? previous : JSON.stringify(previous)}
+
+CHANGEMENTS DEMANDÉS PAR LE CLIENT : ${feedback}
+Applique exactement ces changements, garde le reste.` : ""}
 Ensuite conseille LE style le plus adapté à cette pub parmi ceux disponibles en ${duration} s (qualité voulue, budget, type de produit) :
 ${styles.filter((x) => x.durations.includes(duration)).map((x) => `- ${x.id} : ${x.name} — ${x.description} — ${x.price}`).join("\n")}
-JSON : {"message": "1 phrase courte qui demande au client de valider le script", "script": "le script", "suggested_style": "id du style", "reason": "1 phrase simple : pourquoi ce style pour cette pub"}`);
+JSON : {"message": "1 phrase courte qui présente le découpage et demande de le valider ou de le modifier", "shots": [{"time": "0-3s", "camera": "", "action": "", "line": ""}], "suggested_style": "id du style", "reason": "1 phrase simple : pourquoi ce style pour cette pub"}`);
 }
 
 // 5. Vidéo : un prompt pour toute la durée, avec les 3 références.
@@ -200,9 +219,9 @@ Créateur (à décrire tel quel dans le prompt) : ${creator}\n${extra.guide}${ex
 ${withRefs
     ? "La fiche personnage est @Image1, la fiche produit @Image2, la photo du lieu @Image3. Garde le créateur, le produit et le lieu identiques aux références."
     : "La vidéo démarre sur une image d'ouverture qui montre déjà le créateur, le produit et le lieu : garde-les identiques."}
-Mets le script complet mot pour mot et indique comment prononcer le nom de la marque. Planifie chaque état du produit (fermé/ouvert, éteint/allumé, emballé/porté, plein/utilisé) pour que rien ne change ou n'apparaisse de nulle part, avec des coupes nettes quand le produit change d'état. Jeu naturel et humain, vraies réactions du visage, petits gestes des mains. Pas de musique, pas de sous-titres, pas de texte à l'écran.
+Suis EXACTEMENT le découpage validé par le client, plan par plan (mêmes moments, cadrages, actions), et mets chaque réplique mot pour mot. Indique comment prononcer le nom de la marque. Planifie chaque état du produit (fermé/ouvert, éteint/allumé, emballé/porté, plein/utilisé) pour que rien ne change ou n'apparaisse de nulle part, avec des coupes nettes quand le produit change d'état. Jeu naturel et humain, vraies réactions du visage, petits gestes des mains. Pas de musique, pas de sous-titres, pas de texte à l'écran.
 
-SCRIPT (${p.language}) :
+DÉCOUPAGE VALIDÉ PAR LE CLIENT (répliques en ${p.language}) :
 ${script}
 JSON : {"prompt": "le prompt vidéo en anglais, script inclus mot pour mot dans sa langue"}`);
 }

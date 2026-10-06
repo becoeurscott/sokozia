@@ -10,6 +10,7 @@ import { CREATORS, creatorFiles } from "@/content/creators";
 import { findFormat } from "@/content/formats";
 import { ChatRow, useChatActions } from "./ChatActions";
 import { useVisualViewport } from "./useVisualViewport";
+import Storyboard from "./Storyboard";
 
 type StyleOpt = { price: string; remaining: number };
 type Style = { id: string; name: string; description: string; options: Record<number, StyleOpt | undefined> };
@@ -422,16 +423,19 @@ export default function Studio({ conversations, styles: initialStyles, durations
                     })}
                   </div>
                 ) : null}
-                {project.step === "script" && project.script && (
+                {project.step === "script" && project.shots?.length ? (
+                  <Storyboard key={JSON.stringify(project.shots)} shots={project.shots} busy={busy}
+                    header={`Découpage · ${project.duration} s${project.format ? ` · ${project.format}` : ""} · ${project.product?.language ?? ""}`}
+                    onSave={(shots) => act({ action: "editShots", shots })} onApprove={() => act({ action: "approve" })} />
+                ) : project.step === "script" && project.script ? (
                   <div className="rounded-3xl border border-line bg-card p-5 shadow-sm">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-accent">Script · {project.duration} s{project.format ? ` · ${project.format}` : ""} · {project.product?.language}</p>
                     <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed">{project.script}</p>
                     <button disabled={busy} onClick={() => act({ action: "approve" })}
                       className="mt-4 flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
                       <Check size={15} /> Valider le script
                     </button>
                   </div>
-                )}
+                ) : null}
 
                 {/* Étape vidéo */}
                 {project.step === "video" && project.duration && (
@@ -507,7 +511,7 @@ export default function Studio({ conversations, styles: initialStyles, durations
                 onFocus={() => setTimeout(() => bottom.current?.scrollIntoView({ block: "end" }), 300)}
                 enterKeyHint="send"
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={intake ? "Décris ton produit…" : customCreator ? "Ou décris un créateur sur mesure…" : project?.options?.length ? "Ou décris ta propre idée…" : "Dis ce qu'il faut changer…"}
+                placeholder={intake ? "Décris ton produit…" : customCreator ? "Ou décris un créateur sur mesure…" : project?.step === "script" && project.options?.length ? "Ou décris ta propre idée, Awa en fera un découpage…" : project?.step === "script" && project.shots ? "Ex : rends l'accroche plus drôle, ajoute un plan sur le prix…" : project?.options?.length ? "Ou décris ta propre idée…" : "Dis ce qu'il faut changer…"}
                 className="max-h-40 min-h-[40px] w-full resize-none bg-transparent py-2 text-base outline-none placeholder:text-muted" />
               <button disabled={busy || uploading || (!input.trim() && !photos.length)} className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
                 <ArrowUp size={15} /> Envoyer
