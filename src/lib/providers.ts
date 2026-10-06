@@ -7,11 +7,23 @@ import { hfStatus, hfSubmit } from "./higgsfield";
 export type StyleRow = af.StyleConfig & { provider?: string | null; hf_endpoint?: string | null; hf_params?: Record<string, unknown> | null };
 export const STYLE_COLS = "id, provider, hf_endpoint, hf_params, apiframe_model, apiframe_params, params_key, image_key, refs_key";
 
+// Nos images stockées redirigent vers un lien CDN signé : on donne directement le lien final à Higgsfield.
+async function direct(url: string) {
+  try {
+    const r = await fetch(url, { method: "HEAD", redirect: "manual" });
+    const loc = r.headers.get("location");
+    return r.status >= 300 && r.status < 400 && loc ? new URL(loc, url).toString() : url;
+  } catch {
+    return url;
+  }
+}
+const directAll = (urls: string[]) => Promise.all(urls.map(direct));
+
 export async function startVideoJob(style: StyleRow, prompt: string, duration: number, o: { startImage?: string | null; refs?: string[] } = {}) {
   if (style.provider === "higgsfield" && style.hf_endpoint) {
     const input: Record<string, unknown> = { prompt, duration, aspect_ratio: "9:16", ...(style.hf_params ?? {}) };
-    if (o.refs?.length) input.image_urls = o.refs.slice(0, 4);
-    else if (o.startImage) input.image_url = o.startImage;
+    if (o.refs?.length) input.image_urls = await directAll(o.refs.slice(0, 4));
+    else if (o.startImage) input.image_url = await direct(o.startImage);
     return `hf:${await hfSubmit(style.hf_endpoint, input)}`;
   }
   return af.startVideo(style, prompt, duration, o);
@@ -25,7 +37,7 @@ export async function startImageJob(prompt: string, aspect: "16:9" | "9:16", ref
   const s = Object.fromEntries((data ?? []).map((r: { key: string; value: unknown }) => [r.key, r.value]));
   const ip = s.image_provider as ImageProvider | undefined;
   if (ip?.provider === "higgsfield") {
-    return `hf:${await hfSubmit(ip.hf_endpoint, { prompt, aspect_ratio: aspect, ...ip.hf_params, ...(refs.length ? { image_urls: refs.slice(0, 4) } : {}) })}`;
+    return `hf:${await hfSubmit(ip.hf_endpoint, { prompt, aspect_ratio: aspect, ...ip.hf_params, ...(refs.length ? { image_urls: await directAll(refs.slice(0, 4)) } : {}) })}`;
   }
   return af.startImage(s.image_model as af.ImageModel, prompt, aspect, refs);
 }
