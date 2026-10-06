@@ -1,5 +1,5 @@
 import { adminClient } from "./insforge";
-import { getJob, startVideo, type StyleConfig } from "./apiframe";
+import { getJobStatus, STYLE_COLS, startVideoJob, type StyleRow } from "./providers";
 import { refundPass } from "./passes";
 import { syncImages } from "./project";
 
@@ -26,9 +26,9 @@ export async function syncVideo(v: Row): Promise<Row> {
     const frame = data?.[0];
     if (frame?.status === "failed") return failVideo(v, "frame failed");
     if (frame?.status !== "ready" || !frame.url) return v;
-    const { data: st } = await db.from("styles").select("apiframe_model, apiframe_params, params_key, image_key, refs_key").eq("id", v.style_id!).limit(1);
+    const { data: st } = await db.from("styles").select(STYLE_COLS).eq("id", v.style_id!).limit(1);
     try {
-      const jobId = await startVideo(st![0] as StyleConfig, v.prompt!, v.duration_s!, { startImage: frame.url });
+      const jobId = await startVideoJob(st![0] as StyleRow, v.prompt!, v.duration_s!, { startImage: frame.url });
       await db.from("videos").update({ apiframe_task_id: jobId, status: "processing", image_url: frame.url }).eq("id", v.id).eq("status", "pending");
       return { ...v, status: "processing", apiframe_task_id: jobId };
     } catch (e) {
@@ -37,7 +37,7 @@ export async function syncVideo(v: Row): Promise<Row> {
   }
 
   if (v.status !== "processing" || !v.apiframe_task_id) return v;
-  const job = await getJob(v.apiframe_task_id);
+  const job = await getJobStatus(v.apiframe_task_id);
   if (job.status === "failed") return failVideo(v, String(job.error ?? "failed"));
   if (job.status !== "ready" || !job.url) return v;
 

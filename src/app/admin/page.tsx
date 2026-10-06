@@ -20,6 +20,9 @@ async function saveStyle(form: FormData) {
     cost_usd_per_s: Number(form.get("cost_usd_per_s")),
     durations: JSON.parse(String(form.get("durations") || "[15]")),
     params_key: String(form.get("params_key")),
+    provider: form.get("provider") === "higgsfield" ? "higgsfield" : "apiframe",
+    hf_endpoint: String(form.get("hf_endpoint") || "") || null,
+    hf_params: JSON.parse(String(form.get("hf_params") || "{}")),
     image_key: String(form.get("image_key")),
     active: form.get("active") === "on",
   }).eq("id", String(form.get("id")));
@@ -30,7 +33,7 @@ async function saveSettings(form: FormData) {
   "use server";
   await requireAdmin();
   const db = adminClient().database;
-  for (const key of ["multipliers", "monthly_videos", "fx"]) {
+  for (const key of ["multipliers", "monthly_videos", "fx", "image_provider"]) {
     await db.from("settings").update({ value: JSON.parse(String(form.get(key))) }).eq("key", key);
   }
   revalidatePath("/", "layout");
@@ -95,6 +98,9 @@ export default async function Page() {
             <form key={st.id} action={saveStyle} className="card grid gap-2 text-sm sm:grid-cols-4">
               <input type="hidden" name="id" value={st.id} />
               <label>Nom<input name="name_fr" defaultValue={st.name_fr} className="input" /></label>
+              <label>Fournisseur<select name="provider" defaultValue={st.provider ?? "apiframe"} className="input"><option value="apiframe">APIFrame</option><option value="higgsfield">Higgsfield</option></select></label>
+              <label className="sm:col-span-2">Endpoint Higgsfield<input name="hf_endpoint" defaultValue={st.hf_endpoint ?? ""} placeholder="bytedance/seedance-2.5/reference-to-video" className="input font-mono" /></label>
+              <label>Paramètres Higgsfield (JSON)<input name="hf_params" defaultValue={JSON.stringify(st.hf_params ?? {})} className="input font-mono" /></label>
               <label>Modèle APIFrame<input name="apiframe_model" defaultValue={st.apiframe_model} className="input" /></label>
               <label>Objet params<input name="params_key" defaultValue={st.params_key} className="input font-mono" /></label>
               <label>Champ image<input name="image_key" defaultValue={st.image_key} className="input font-mono" /></label>
@@ -119,6 +125,7 @@ export default async function Page() {
         <form action={saveSettings} className="card grid gap-3 text-sm sm:grid-cols-2">
           <label>Multiplicateurs (unité / pack5 / mensuel)<input name="multipliers" defaultValue={s.multipliers} className="input font-mono" /></label>
           <label>Vidéos par abonnement mensuel<input name="monthly_videos" defaultValue={s.monthly_videos} className="input font-mono" /></label>
+          <label className="sm:col-span-2">Images de référence (provider apiframe | higgsfield)<input name="image_provider" defaultValue={s.image_provider} className="input font-mono" /></label>
           <label>Taux de change (1 $ =)<input name="fx" defaultValue={s.fx} className="input font-mono" /></label>
           <div className="sm:col-span-2"><button className="btn">Enregistrer</button></div>
         </form>

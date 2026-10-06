@@ -1,10 +1,10 @@
 import { adminClient } from "./insforge";
-import { startVideo, type StyleConfig } from "./apiframe";
+import { STYLE_COLS, startVideoJob, type StyleRow } from "./providers";
 import { refundPass } from "./passes";
 import { videoPrompt, framePrompt } from "./director";
 import { approvedRefs, genImage, loadProject } from "./project";
 
-type FullStyle = StyleConfig & { id: string };
+type FullStyle = StyleRow & { id: string };
 
 // Lance la pub d'un projet arrivé à l'étape vidéo. passId = la pub prise dans un pass (null pour l'admin).
 export async function startGeneration(o: { userId: string; conversationId: string; styleId: string; passId: string | null }) {
@@ -13,13 +13,13 @@ export async function startGeneration(o: { userId: string; conversationId: strin
 
   const p = await loadProject(o.userId, o.conversationId);
   if (!p || p.step !== "video" || !p.script || !p.duration_s || !p.product) return fail("Termine d'abord les étapes du projet.");
-  const { data: styles } = await db.from("styles").select("id, apiframe_model, apiframe_params, params_key, image_key, refs_key").eq("id", o.styleId).limit(1);
+  const { data: styles } = await db.from("styles").select(STYLE_COLS).eq("id", o.styleId).limit(1);
   const style = styles?.[0] as FullStyle | undefined;
   if (!style) return fail("Style introuvable.");
   const refs = await approvedRefs(p.id);
   if (refs.length < 3) return fail("Il manque une image validée (produit, créateur ou lieu).");
 
-  const withRefs = Boolean(style.refs_key);
+  const withRefs = style.provider === "higgsfield" ? style.hf_endpoint?.includes("reference") ?? false : Boolean(style.refs_key);
   const { prompt } = await videoPrompt(p.product, p.script, p.duration_s, withRefs, p.creator_desc ?? "");
   const { data: created } = await db.from("videos").insert([{
     created_by: o.userId, conversation_id: p.id, style_id: style.id, duration_s: p.duration_s, prompt, pass_id: o.passId,
@@ -28,7 +28,7 @@ export async function startGeneration(o: { userId: string; conversationId: strin
 
   try {
     if (withRefs) {
-      const jobId = await startVideo(style, prompt, p.duration_s, { refs });
+      const jobId = await startVideoJob(style, prompt, p.duration_s, { refs });
       await db.from("videos").update({ apiframe_task_id: jobId, status: "processing" }).eq("id", videoId);
     } else {
       // Pas de références pour ce modèle : on crée d'abord l'image d'ouverture (créateur + lieu + produit),

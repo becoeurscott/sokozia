@@ -1,5 +1,5 @@
 import { adminClient } from "./insforge";
-import { getJob, startImage, type ImageModel } from "./apiframe";
+import { getJobStatus, startImageJob } from "./providers";
 import * as awa from "./director";
 import type { ChatTurn, Option, Product } from "./director";
 import { creatorSheetUrl, findCreator } from "@/content/creators";
@@ -20,9 +20,9 @@ export type ProjectRow = {
 const db = () => adminClient().database;
 
 async function settings() {
-  const { data } = await db().from("settings").select("key, value").in("key", ["image_model", "max_retries"]);
+  const { data } = await db().from("settings").select("key, value").in("key", ["max_retries"]);
   const s = Object.fromEntries((data ?? []).map((r: { key: string; value: unknown }) => [r.key, r.value]));
-  return { imageModel: s.image_model as ImageModel, maxRetries: Number(s.max_retries ?? 3) };
+  return { maxRetries: Number(s.max_retries ?? 3) };
 }
 
 async function say(convId: string, content: string, role: "assistant" | "user" = "assistant") {
@@ -55,7 +55,7 @@ export async function syncImages(convId: string) {
     .eq("conversation_id", convId).eq("status", "processing").limit(10);
   for (const img of (data ?? []) as { id: string; apiframe_task_id: string | null }[]) {
     if (!img.apiframe_task_id) continue;
-    const job = await getJob(img.apiframe_task_id);
+    const job = await getJobStatus(img.apiframe_task_id);
     if (job.status === "failed") {
       await db().from("project_images").update({ status: "failed" }).eq("id", img.id).eq("status", "processing");
     } else if (job.status === "ready" && job.url) {
@@ -68,11 +68,10 @@ export async function syncImages(convId: string) {
 }
 
 async function genImage(convId: string, kind: ImageKind, prompt: string, aspect: "16:9" | "9:16", refs: string[]) {
-  const { imageModel } = await settings();
   const { data } = await db().from("project_images").insert([{ conversation_id: convId, kind, prompt }]).select("id");
   const id = data![0].id as string;
   try {
-    const task = await startImage(imageModel, prompt, aspect, refs);
+    const task = await startImageJob(prompt, aspect, refs);
     await db().from("project_images").update({ apiframe_task_id: task }).eq("id", id);
   } catch (e) {
     await db().from("project_images").update({ status: "failed" }).eq("id", id);
