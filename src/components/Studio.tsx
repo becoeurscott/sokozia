@@ -26,14 +26,62 @@ function groupLabel(iso: string) {
   return days === 0 ? "Aujourd'hui" : days === 1 ? "Hier" : "Plus ancien";
 }
 
+// Requête au serveur ; si la session a expiré (401), on la rafraîchit puis on réessaie une fois.
+async function api(url: string, init?: RequestInit) {
+  let r = await fetch(url, init);
+  if (r.status === 401) {
+    const refreshed = await fetch("/api/auth/refresh", { method: "POST" }).then((x) => x.ok).catch(() => false);
+    if (refreshed) r = await fetch(url, init);
+  }
+  if (r.status === 401) return { error: "Ta session a expiré. Reconnecte-toi.", expired: true };
+  return r.json().catch(() => ({ error: "Réponse invalide. Réessaie." }));
+}
+
 const post = (url: string, body: unknown) =>
-  fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-    .then((r) => r.json()).catch(() => ({ error: "Connexion perdue. Réessaie." }));
+  api(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    .catch(() => ({ error: "Connexion perdue. Réessaie." }));
+
+const get = (url: string) => api(url).catch(() => null);
+
+// Réduit une photo de téléphone (2000 px max, JPEG) avant l'envoi.
+async function shrink(file: File): Promise<Blob> {
+  if (file.size < 1.5 * 1024 * 1024) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+    return await new Promise((res) => c.toBlob((b) => res(b ?? file), "image/jpeg", 0.85));
+  } catch {
+    return file;
+  }
+}
 
 async function uploadFile(file: File): Promise<{ url?: string; error?: string }> {
   const fd = new FormData();
-  fd.append("file", file);
-  return fetch("/api/upload", { method: "POST", body: fd }).then((r) => r.json()).catch(() => ({ error: "Envoi impossible." }));
+  fd.append("file", await shrink(file), file.name.replace(/\.\w+$/, "") + ".jpg");
+  return api("/api/upload", { method: "POST", body: fd }).catch(() => ({ error: "Envoi impossible." }));
+}
+
+type Pending = { content: string; attachments: string[] };
+
+function UserBubble({ content, attachments, sending }: { content: string; attachments: string[]; sending?: boolean }) {
+  return (
+    <div className={`flex flex-col items-end gap-1.5 ${sending ? "opacity-80" : ""}`}>
+      {attachments.length > 0 && (
+        <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+          {attachments.map((u) => (
+            <a key={u} href={u} target="_blank" className="block h-24 w-24 overflow-hidden rounded-2xl border border-line bg-card sm:h-28 sm:w-28">
+              <img src={u} alt="Photo envoyée" className="h-full w-full object-cover" />
+            </a>
+          ))}
+        </div>
+      )}
+      {content && <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-md bg-ink px-4 py-3 text-[15px] leading-relaxed text-white">{content}</div>}
+      {sending && <span className="text-[11px] text-muted">Envoi…</span>}
+    </div>
+  );
 }
 
 export default function Studio({ conversations, styles: initialStyles, packs, isAdmin, firstName, initialProjectId, initialProject }: {
@@ -45,11 +93,13 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [pending, setPending] = useState<Pending | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string>();
   const [menu, setMenu] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
   const vv = useVisualViewport();
   const HEADER = 56;
 
@@ -60,7 +110,7 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
-  }, [project?.messages.length, project?.step, project?.video?.status, project?.styleId, project?.duration]);
+  }, [project?.messages.length, project?.step, project?.video?.status, project?.styleId, project?.duration, pending]);
 
   // Suivi des images et de la vidéo en cours.
   const waiting = !!project && (
@@ -69,7 +119,7 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
   useEffect(() => {
     if (!waiting || !project) return;
     const t = setInterval(async () => {
-      const r = await fetch(`/api/project/${project.id}`).then((r) => r.json()).catch(() => null);
+      const r = await get(`/api/project/${project.id}`);
       if (r?.id) setProject(r);
     }, 5000);
     return () => clearInterval(t);
@@ -91,7 +141,7 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
 
   async function open(id: string) {
     setMenu(false); setError(undefined);
-    const r = await fetch(`/api/project/${id}`).then((r) => r.json()).catch(() => null);
+    const r = await get(`/api/project/${id}`);
     if (r?.id) setProject(r);
   }
 
@@ -100,10 +150,19 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
     setConvs((c) => [{ id: s.id, title: s.title, created_at: new Date().toISOString() }, ...c]);
   }
 
-  async function act(body: Record<string, unknown>) {
+  async function act(body: Record<string, unknown>, show?: Pending) {
     if (!project || busy) return;
     setBusy(true); setError(undefined);
-    apply(await post(`/api/project/${project.id}`, body));
+    if (show) setPending(show);
+    const r = await post(`/api/project/${project.id}`, body);
+    apply(r);
+    // Échec de l'envoi : on remet le texte et les photos dans la zone de saisie.
+    if (show && (r.error || !r.id)) {
+      if (!r.error) setError("Connexion perdue. Réessaie.");
+      setInput((v) => v || show.content);
+      if (show.attachments.length) setPhotos((p) => (p.length ? p : show.attachments));
+    }
+    setPending(null);
     setBusy(false);
   }
 
@@ -117,17 +176,18 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
     if (box.current) box.current.style.height = "auto";
     const sent = photos;
     setPhotos([]);
+    const show = { content: text, attachments: sent };
     if (!project) {
-      setBusy(true); setError(undefined);
+      setBusy(true); setError(undefined); setPending(show);
       const r = await post("/api/project", { text, photos: sent });
-      setBusy(false);
-      if (r.error) { setPhotos(sent); return setError(r.error); }
+      setPending(null); setBusy(false);
+      if (r.error) { setPhotos(sent); setInput(text); return setError(r.error); }
       created(r);
       return;
     }
-    if (intake) return act({ action: "chat", text, photos: sent });
-    if (project.step === "creator" || project.step === "location") return act({ action: customCreator || project.options?.length ? "pick" : "revise", text });
-    act({ action: "revise", text });
+    if (intake) return act({ action: "chat", text, photos: sent }, show);
+    if (project.step === "creator" || project.step === "location") return act({ action: customCreator || project.options?.length ? "pick" : "revise", text }, show);
+    act({ action: "revise", text }, show);
   }
 
   async function upload(files: FileList) {
@@ -150,7 +210,7 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
     setUploading(false);
     if (!urls.length) return;
     if (!project) { setPhotos((p) => [...p, ...urls]); return; }
-    act({ action: "chat", text: "", photos: urls });
+    act({ action: "chat", text: "", photos: urls }, { content: "", attachments: urls });
   }
 
   async function locationPhoto(file: File) {
@@ -260,7 +320,12 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
 
         <div className="flex-1 overflow-y-auto px-4 sm:px-8">
           <div className="mx-auto max-w-3xl pb-6">
-            {!project ? (
+            {!project && pending ? (
+              <div className="space-y-5 pt-2">
+                <UserBubble content={pending.content} attachments={pending.attachments} sending />
+                <div className="flex items-center gap-3"><Orb size={30} /><span className="flex gap-1">{[0, 1, 2].map((i) => <span key={i} className="h-2 w-2 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${i * 120}ms` }} />)}</span><span className="text-xs text-muted">Awa écrit…</span></div>
+              </div>
+            ) : !project ? (
               <div className="flex flex-col items-center pt-8 text-center">
                 <Orb size={64} />
                 <h1 className="mt-5 text-3xl font-extrabold tracking-tight sm:text-4xl">Salut{firstName ? `, ${firstName}` : ""}</h1>
@@ -274,9 +339,19 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
               <div className="space-y-5 pt-2">
                 {project.messages.map((m, i) => m.role === "assistant" ? (
                   <div key={i} className="flex gap-3"><Orb size={30} /><div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tl-md border border-line bg-card px-4 py-3 text-[15px] leading-relaxed shadow-sm">{m.content}</div></div>
-                ) : (
-                  <div key={i} className="flex justify-end"><div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-md bg-ink px-4 py-3 text-[15px] leading-relaxed text-white">{m.content}</div></div>
-                ))}
+                ) : <UserBubble key={i} content={m.content} attachments={m.attachments ?? []} />)}
+                {pending && <UserBubble content={pending.content} attachments={pending.attachments} sending />}
+
+                {/* Réponses proposées par Awa (boutons) */}
+                {intake && !busy && !!project.options?.length && (
+                  <div className="flex flex-wrap gap-2 pl-10">
+                    <input ref={picker} type="file" accept="image/*" multiple className="hidden" onChange={(e) => e.target.files && uploadAndSend(e.target.files)} />
+                    {project.options.map((o) => (
+                      <button key={o.title} onClick={() => (/photo/i.test(o.title) ? picker.current?.click() : send(o.title))}
+                        className="rounded-full border border-brand/40 bg-card px-4 py-2 text-left text-sm font-medium text-ink shadow-sm transition hover:border-brand hover:bg-brand/5">{o.title}</button>
+                    ))}
+                  </div>
+                )}
 
                 {/* 1. Produit */}
                 {intake && !project.photos.length && <PhotoPrompt onFiles={uploadAndSend} uploading={uploading} count={0} />}
@@ -367,7 +442,7 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
                   <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">La dernière pub n&apos;a pas pu être créée. Elle ne t&apos;a pas été décomptée : relance-la.</p>
                 )}
 
-                {busy && <div className="flex items-center gap-3"><Orb size={30} /><span className="flex gap-1">{[0, 1, 2].map((i) => <span key={i} className="h-2 w-2 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${i * 120}ms` }} />)}</span></div>}
+                {busy && <div className="flex items-center gap-3"><Orb size={30} /><span className="flex gap-1">{[0, 1, 2].map((i) => <span key={i} className="h-2 w-2 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${i * 120}ms` }} />)}</span><span className="text-xs text-muted">Awa écrit…</span></div>}
               </div>
             )}
             {error && <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}

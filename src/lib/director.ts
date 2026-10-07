@@ -101,8 +101,8 @@ const revision = (feedback?: string, previous?: string) =>
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
 export function productChat(history: ChatTurn[], photos: number) {
-  return askJSON<{ reply: string; product: Omit<Product, "photos"> & { worn?: boolean } | null }>(`ÉTAPE 1 — TON PRODUIT, en conversation.
-Tu poses UNE question courte à la fois, avec 2 à 4 exemples de réponses, pour connaître :
+  return askJSON<{ reply: string; choices?: string[]; product: Omit<Product, "photos"> & { worn?: boolean } | null }>(`ÉTAPE 1 — TON PRODUIT, en conversation.
+Tu poses UNE question courte à la fois. Les exemples de réponses ne vont PAS dans le texte : mets 2 à 4 réponses courtes dans "choices" : le client les touche comme des boutons, donc chaque réponse doit être COMPLÈTE et envoyable telle quelle (jamais de « … », jamais de trou à remplir, jamais « je vais envoyer des photos » : il y a déjà un bouton Photo). Pour une question ouverte (nom de marque, texte d'étiquette), ne propose que des réponses complètes possibles (ex : « Je n'ai pas encore de nom de marque »), le client tapera le reste. Pour connaître :
 1) la marque et le nom du produit, 2) ce que c'est (type, taille), 3) ${photos ? `ce que les ${photos} photo(s) envoyée(s) ne montrent pas (dos, intérieur, texte de l'étiquette)` : "à quoi il ressemble (forme, couleurs, bouchon, texte EXACT de l'étiquette) — propose aussi d'envoyer des photos avec le bouton Photo"}, 4) pourquoi il est bien, 5) qui l'achète, 6) la langue parlée dans la vidéo (français, anglais, français avec expressions locales, pidgin…).
 Le reste (plateforme, style de vidéo, ambiance, direction, mots interdits) est facultatif : demande-le en UNE seule question groupée à la fin, le client peut répondre « non ».
 Regroupe ce que le client dit déjà, ne redemande jamais une info donnée. Si le client est pressé, déduis le reste intelligemment.
@@ -112,7 +112,7 @@ CONVERSATION :
 ${history.map((m) => `${m.role === "user" ? "CLIENT" : "AWA"} : ${m.content}`).join("\n")}
 
 Quand tu as au moins 1 à 5 et la langue, réponds avec la fiche complète. Sinon product = null.
-JSON : {"reply": "ton message court au client", "product": null}
+JSON : {"reply": "ta question courte, sans exemples", "choices": ["réponse prête 1", "réponse prête 2", "…"], "product": null}
 ou {"reply": "résumé en 1 phrase + « Je prépare ta fiche produit. »", "product": {"brand": "", "name": "", "what": "", "looks": "", "hidden": "", "benefits": "", "buyer": "", "platform": "TikTok", "videoStyle": "", "vibe": "", "direction": "", "avoid": "", "language": "", "worn": false}}`);
 }
 

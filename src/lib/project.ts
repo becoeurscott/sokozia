@@ -30,8 +30,8 @@ async function settings() {
   return { maxRetries: Number(s.max_retries ?? 3) };
 }
 
-async function say(convId: string, content: string, role: "assistant" | "user" = "assistant") {
-  if (content) await db().from("messages").insert([{ conversation_id: convId, role, content }]);
+async function say(convId: string, content: string, role: "assistant" | "user" = "assistant", attachments: string[] = []) {
+  if (content || attachments.length) await db().from("messages").insert([{ conversation_id: convId, role, content, attachments }]);
 }
 
 async function update(convId: string, patch: Partial<ProjectRow>) {
@@ -90,7 +90,7 @@ export async function projectState(p: ProjectRow) {
   await syncImages(p.id);
   const [imgs, { data: msgs }, { maxRetries }, { data: vids }] = await Promise.all([
     latestImages(p.id),
-    db().from("messages").select("role, content").eq("conversation_id", p.id).order("created_at").limit(200),
+    db().from("messages").select("role, content, attachments").eq("conversation_id", p.id).order("created_at").limit(200),
     settings(),
     db().from("videos").select("id, status, video_url, style_id, created_at").eq("conversation_id", p.id).order("created_at", { ascending: false }).limit(1),
   ]);
@@ -107,7 +107,7 @@ export async function projectState(p: ProjectRow) {
     shots: p.shots ?? null,
     images: { product: pub(imgs.product), creator: pub(imgs.creator), location: pub(imgs.location), frame: pub(imgs.frame) },
     retriesLeft: Math.max(0, maxRetries - (p.retries?.[p.step] ?? 0)),
-    messages: (msgs ?? []) as { role: string; content: string }[],
+    messages: (msgs ?? []) as { role: string; content: string; attachments: string[] }[],
     video: v ? { id: v.id, status: v.status === "pending" ? "processing" : v.status, url: v.video_url, style: v.style_id, startedAt: v.created_at } : null,
   };
 }
@@ -122,7 +122,7 @@ export async function createProject(userId: string, text: string, photos: string
     user_id: userId, title: text.slice(0, 50) || "Nouvelle pub", step: "product", photos,
   }]).select("id");
   const convId = data![0].id as string;
-  await say(convId, text || "(photos envoyées)", "user");
+  await say(convId, text, "user", photos);
   await intake((await loadProject(userId, convId))!);
   return convId;
 }
@@ -132,7 +132,11 @@ async function intake(p: ProjectRow) {
   const { data: msgs } = await db().from("messages").select("role, content").eq("conversation_id", p.id).order("created_at").limit(60);
   const r = await awa.productChat((msgs ?? []) as ChatTurn[], p.photos?.length ?? 0);
   await say(p.id, r.reply);
-  if (!r.product) return;
+  if (!r.product) {
+    const choices = (r.choices ?? []).map((c) => String(c).trim()).filter(Boolean).slice(0, 4);
+    await update(p.id, { options: choices.map((c) => ({ title: c, detail: "" })) });
+    return;
+  }
   const raw = r.product as Record<string, unknown>;
   const str = (k: string, d = "") => (typeof raw[k] === "string" && (raw[k] as string).trim() ? (raw[k] as string).trim() : d);
   const product = {
@@ -141,7 +145,7 @@ async function intake(p: ProjectRow) {
     vibe: str("vibe"), direction: str("direction"), avoid: str("avoid"), language: str("language", "français"),
     worn: Boolean(raw.worn), photos: p.photos ?? [],
   } as Product;
-  await update(p.id, { product, title: `${product.brand} ${product.name}`.trim().slice(0, 60) });
+  await update(p.id, { product, options: null, title: `${product.brand} ${product.name}`.trim().slice(0, 60) });
   const sheet = await awa.productSheetPrompt(product);
   await genImage(p.id, "product", sheet.prompt, "16:9", product.photos);
 }
@@ -223,7 +227,7 @@ export async function act(p: ProjectRow, a: Action) {
   if (p.step === "product" && !p.product) {
     const photos = [...(p.photos ?? []), ...(a.photos ?? [])].slice(0, 6);
     if (a.photos?.length) await update(p.id, { photos });
-    await say(p.id, text || `(${a.photos?.length ?? 0} photo(s) envoyée(s))`, "user");
+    await say(p.id, text, "user", a.photos ?? []);
     await intake({ ...p, photos });
     return;
   }
