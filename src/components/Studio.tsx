@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Thinking } from "./Thinking";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, Film, FolderOpen, ImagePlus, LayoutGrid, Loader2, Plus, Sparkles, Wallet, X } from "lucide-react";
 import type { ProjectState } from "@/lib/project";
@@ -167,7 +168,7 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
     setBusy(false);
   }
 
-  const intake = !project || (project.step === "product" && !project.product);
+  const intake = !project || (project.step === "product" && (!project.product || !project.photos.length));
   const customCreator = project?.step === "creator" && !project.images.creator;
 
   async function send(preset?: string) {
@@ -324,7 +325,7 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
             {!project && pending ? (
               <div className="space-y-5 pt-2">
                 <UserBubble content={pending.content} attachments={pending.attachments} sending />
-                <div className="flex items-center gap-3"><Orb size={30} /><span className="flex gap-1">{[0, 1, 2].map((i) => <span key={i} className="h-2 w-2 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${i * 120}ms` }} />)}</span><span className="text-xs text-muted">Awa écrit…</span></div>
+                <Thinking />
               </div>
             ) : !project ? (
               <div className="flex flex-col items-center pt-8 text-center">
@@ -443,7 +444,7 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
                   <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">La dernière pub n&apos;a pas pu être créée. Elle ne t&apos;a pas été décomptée : relance-la.</p>
                 )}
 
-                {busy && <div className="flex items-center gap-3"><Orb size={30} /><span className="flex gap-1">{[0, 1, 2].map((i) => <span key={i} className="h-2 w-2 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${i * 120}ms` }} />)}</span><span className="text-xs text-muted">Awa écrit…</span></div>}
+                {busy && <Thinking step={project?.step} />}
               </div>
             )}
             {error && <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}

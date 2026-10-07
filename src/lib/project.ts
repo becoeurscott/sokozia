@@ -157,8 +157,17 @@ async function intake(p: ProjectRow) {
     worn: Boolean(raw.worn), photos: p.photos ?? [],
   } as Product;
   await update(p.id, { product, options: null, title: `${product.brand} ${product.name}`.trim().slice(0, 60) });
+  // Pas de fiche produit sans vraie photo : sinon l'IA invente un produit qui n'est pas le sien.
+  if (!product.photos.length) {
+    await say(p.id, "Il me manque une chose : envoie-moi au moins une photo de ton produit (de face, bien éclairée). C'est elle qui garantit que la pub montre ton vrai produit.");
+    return;
+  }
+  await sheetFor(p.id, product);
+}
+
+async function sheetFor(id: string, product: Product) {
   const sheet = await awa.productSheetPrompt(product);
-  await genImage(p.id, "product", sheet.prompt, "16:9", product.photos);
+  await genImage(id, "product", sheet.prompt, "16:9", product.photos);
 }
 
 // ---- Outils ----
@@ -257,10 +266,15 @@ export async function act(p: ProjectRow, a: Action) {
   const kind = IMAGE_STEP[p.step];
 
   // 1. Conversation produit (avant la fiche produit) : message + photos éventuelles.
-  if (p.step === "product" && !p.product) {
+  if (p.step === "product" && (!p.product || !p.photos?.length)) {
     const photos = [...(p.photos ?? []), ...(a.photos ?? [])].slice(0, 6);
     if (a.photos?.length) await update(p.id, { photos });
     await say(p.id, text, "user", a.photos ?? []);
+    // Fiche déjà complète, il ne manquait que la photo : on lance directement l'image.
+    if (p.product && photos.length && a.photos?.length) {
+      await say(p.id, "Merci, j'ai ta photo. Je prépare ta fiche produit.");
+      return sheetFor(p.id, { ...(p.product as Product), photos });
+    }
     await intake({ ...p, photos });
     return;
   }

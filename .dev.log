@@ -1,0 +1,23 @@
+▲ Next.js 16.3.7 (Turbopack)
+- Local:         http://localhost:3200
+- Network:       http://192.168.1.182:3200
+- Environments: .env.local
+✓ Ready in 259ms
+✓ Running next.config.ts took 119ms
+
+ GET /e2e-preview/6afb82a0-5550-4778-b886-812af169bb00 200 in 3.8s (next.js: 1242ms, proxy.ts: 107ms, application-code: 2.5s)
+ POST /api/project/6afb82a0-5550-4778-b886-812af169bb00 401 in 841ms (next.js: 801ms, proxy.ts: 14ms, application-code: 26ms)
+ POST /api/auth/refresh 401 in 68ms (next.js: 62ms, proxy.ts: 3ms, application-code: 3ms)
+ GET /e2e-preview/6afb82a0-5550-4778-b886-812af169bb00 200 in 2.3s (next.js: 10ms, proxy.ts: 3ms, application-code: 2.3s)
+✓ Compiled in 42ms
+ GET /e2e-preview/6afb82a0-5550-4778-b886-812af169bb00 200 in 32ms (next.js: 9ms, proxy.ts: 3ms, application-code: 20ms)
+✓ Compiled in 39ms
+ GET /e2e-preview/6afb82a0-5550-4778-b886-812af169bb00 200 in 29ms (next.js: 6ms, proxy.ts: 3ms, application-code: 20ms)
+✓ Compiled in 23ms
+ GET /e2e-preview/6afb82a0-5550-4778-b886-812af169bb00 200 in 30ms (next.js: 9ms, proxy.ts: 1.3ms, application-code: 20ms)
+ GET /e2e-preview/6afb82a0-5550-4778-b886-812af169bb00 200 in 29ms (next.js: 9ms, proxy.ts: 3ms, application-code: 18ms)
+ GET /e2e-preview/6afb82a0-5550-4778-b886-812af169bb00 200 in 27ms (next.js: 4ms, proxy.ts: 1.7ms, application-code: 22ms)
+✓ Compiled in 18ms
+ GET / 200 in 1053ms (next.js: 162ms, proxy.ts: 1.0ms, application-code: 890ms)
+ GET /e2e-preview/6afb82a0-5550-4778-b886-812af169bb00 200 in 2.5s (next.js: 10ms, proxy.ts: 4ms, application-code: 2.4s)
+[?25h
