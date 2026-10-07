@@ -123,3 +123,55 @@ export async function savePricing(form: FormData): Promise<void> {
   }
   revalidatePath("/", "layout");
 }
+
+const authApi = (path: string, init: RequestInit) => fetch(`${process.env.NEXT_PUBLIC_INSFORGE_URL}${path}`, {
+  ...init, headers: { Authorization: `Bearer ${process.env.INSFORGE_API_KEY}`, "Content-Type": "application/json" }, cache: "no-store",
+});
+
+/** Crée un compte client depuis l'admin (e-mail marqué vérifié, il peut se connecter tout de suite). */
+export async function createUser(input: { email: string; password: string; name: string; phone: string; country: string }): Promise<ActionResult & { id?: string }> {
+  try {
+    const admin = await requireAdmin();
+    const email = input.email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new AdminError("E-mail invalide.", "INVALID");
+    if (input.password.length < 6) throw new AdminError("Mot de passe : 6 caractères minimum.", "INVALID");
+    const r = await authApi("/api/auth/users", { method: "POST", body: JSON.stringify({ email, password: input.password, name: input.name.trim() }) });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new AdminError(body?.message ?? "Création impossible (e-mail déjà utilisé ?).");
+    const list = await (await authApi(`/api/auth/users?search=${encodeURIComponent(email)}&limit=5`, { method: "GET" })).json();
+    const id = (list?.data as { id: string; email: string }[] | undefined)?.find((u) => u.email === email)?.id;
+    if (!id) throw new AdminError("Compte créé mais introuvable.");
+    await db().rpc("admin_verify_user", { uid: id });
+    const { error } = await db().from("profiles").upsert([{ id, full_name: input.name.trim(), phone: input.phone.trim() || null, country: input.country || "CI", accepted_terms_at: new Date().toISOString() }]);
+    if (error) throw new AdminError(error.message);
+    await audit(admin, { action: "user.create", targetType: "user", targetId: id, after: { email, name: input.name, country: input.country } });
+    return { ...done("Compte créé."), id };
+  } catch (e) { return fail(e); }
+}
+
+/** Modifie le nom, le téléphone et le pays d'un client. */
+export async function updateUser(userId: string, input: { name: string; phone: string; country: string }): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin();
+    const { data: before } = await db().from("profiles").select("full_name, phone, country").eq("id", userId).limit(1);
+    const after = { full_name: input.name.trim(), phone: input.phone.trim() || null, country: input.country };
+    const { error } = await db().from("profiles").update(after).eq("id", userId);
+    if (error) throw new AdminError(error.message);
+    await audit(admin, { action: "user.update", targetType: "user", targetId: userId, before: before?.[0], after });
+    return done("Profil mis à jour.");
+  } catch (e) { return fail(e); }
+}
+
+/** Supprime un compte (ses projets et pubs restantes partent avec ; les vidéos restent à Sokozia). */
+export async function deleteUser(userId: string, reason: string): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin();
+    if (userId === admin.id) throw new AdminError("Tu ne peux pas supprimer ton propre compte.", "INVALID");
+    if (reason.trim().length < 3) throw new AdminError("Indique une raison.", "INVALID");
+    const { data: before } = await db().from("profiles").select("full_name, phone, country").eq("id", userId).limit(1);
+    const r = await authApi("/api/auth/users", { method: "DELETE", body: JSON.stringify({ userIds: [userId] }) });
+    if (!r.ok) throw new AdminError("Suppression impossible.");
+    await audit(admin, { action: "user.delete", targetType: "user", targetId: userId, before: before?.[0], reason: reason.trim().slice(0, 200) });
+    return done("Compte supprimé.");
+  } catch (e) { return fail(e); }
+}

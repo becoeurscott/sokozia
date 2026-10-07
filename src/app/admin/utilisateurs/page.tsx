@@ -2,6 +2,8 @@ import Link from "next/link";
 import { AdminTopBar } from "@/components/admin/AdminTopBar";
 import { Badge, Card, Empty, ErrorBox, Pager, SearchForm, fmtDate, fmtNum, fmtXof } from "@/components/admin/ui";
 import { listUsers } from "@/lib/admin";
+import { COUNTRIES } from "@/lib/pricing";
+import { NewUser } from "@/components/admin/UserActions";
 
 const PAGE_SIZE = 25;
 
@@ -21,6 +23,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
       <AdminTopBar title="Utilisateurs" pill={`${fmtNum(res.total)} comptes`} subtitle="Comptes, pubs créées, pubs restantes et paiements" />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <SearchForm action="/admin/utilisateurs" query={q} placeholder="E-mail, nom, téléphone ou identifiant…" />
+        <NewUser countries={Object.entries(COUNTRIES).map(([code, c]) => ({ code, name: c.name }))} />
       </div>
       <Card className="overflow-hidden p-0 sm:p-0">
         {res.items.length ? (

@@ -2,6 +2,7 @@ import { ArrowLeft, Clapperboard, FolderOpen, ScrollText, Smartphone, Ticket, Us
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminTopBar } from "@/components/admin/AdminTopBar";
+import { COUNTRIES } from "@/lib/pricing";
 import { UserActions } from "@/components/admin/UserActions";
 import { Badge, Card, CardHeader, Empty, ErrorBox, PAY_LABEL, PAY_TONE, PLAN_LABEL, STATUS_LABEL, STATUS_TONE, fmtDate, fmtNum, fmtUsd, fmtXof } from "@/components/admin/ui";
 import { getUser, listAudit } from "@/lib/admin";
@@ -41,7 +42,7 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
       <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <Card>
           <CardHeader icon={<UserCog />} title="Actions" />
-          <UserActions userId={user.id} isAdmin={user.is_admin} styles={pricing.styles.map((s) => ({ id: s.id, name: s.name_fr, durations: s.durations }))} />
+          <UserActions userId={user.id} isAdmin={user.is_admin} who={{ name: user.name ?? "", phone: user.phone ?? "", country: user.country ?? "CI" }} countries={Object.entries(COUNTRIES).map(([code, c]) => ({ code, name: c.name }))} styles={pricing.styles.map((s) => ({ id: s.id, name: s.name_fr, durations: s.durations }))} />
         </Card>
         <Card>
           <CardHeader icon={<Ticket />} title="Pubs achetées, offertes et rendues" />
