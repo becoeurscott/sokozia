@@ -35,3 +35,16 @@ body { background: var(--bg); color: var(--ink); }
 .marquee-wrap:hover .marquee { animation-play-state: paused; }
 .marquee-wrap { mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent); }
 @media (prefers-reduced-motion: reduce) { .marquee { animation: none; } }
+
+/* Admin : tableaux en cartes sur téléphone */
+@media (max-width: 767px) {
+  .admin-root table { min-width: 0 !important; width: 100%; display: block; }
+  .admin-root thead { display: none; }
+  .admin-root tbody { display: block; }
+  .admin-root tbody tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding: 14px 16px; border-bottom: 1px solid rgb(255 255 255 / .06); }
+  .admin-root tbody td { display: block; padding: 0 !important; text-align: left !important; min-width: 0; overflow-wrap: anywhere; }
+  .admin-root tbody td:first-child { grid-column: 1 / -1; }
+  .admin-root tbody td[data-label]:not(:first-child)::before { content: attr(data-label); display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: rgb(255 255 255 / .4); margin-bottom: 2px; }
+  .admin-root tbody td:empty { display: none; }
+  .admin-root .overflow-x-auto { overflow-x: visible; }
+}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { MobileTables } from "@/components/admin/MobileTables";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { currentAdmin } from "@/lib/admin";
 import { getSession } from "@/lib/insforge";
@@ -29,7 +30,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-[#0a0a0a] text-white lg:p-3">
+    <div className="admin-root fixed inset-0 z-[60] overflow-y-auto bg-[#0a0a0a] text-white lg:p-3">
+      <MobileTables />
       <div className="flex min-h-dvh overflow-hidden bg-black lg:min-h-[calc(100dvh-24px)] lg:rounded-[22px] lg:border lg:border-white/[0.06]">
         <AdminNav admin={{ name: admin.name, email: admin.email }} />
         <div className="min-w-0 flex-1 px-4 pb-24 pt-4 sm:px-6 lg:pb-8">{children}</div>
