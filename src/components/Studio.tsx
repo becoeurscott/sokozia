@@ -115,6 +115,7 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
   // Suivi des images et de la vidéo en cours.
   const waiting = !!project && (
     Object.values(project.images).some((i) => i?.status === "processing") || project.video?.status === "processing"
+    || (project.locationPhotos ?? []).some((i) => i?.status === "processing")
   );
   useEffect(() => {
     if (!waiting || !project) return;
@@ -391,7 +392,7 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
 
                 {/* 4. Lieu */}
                 {project.step === "location" && project.options?.length ? (
-                  <LocationPicks options={project.options} busy={busy} uploading={uploading} onPick={(i) => act({ action: "pick", index: i })} onPhoto={locationPhoto} />
+                  <LocationPicks options={project.options} photos={project.locationPhotos ?? []} busy={busy} uploading={uploading} onPick={(i) => act({ action: "pick", index: i })} onPhoto={locationPhoto} />
                 ) : null}
                 {project.step === "location" && !project.options?.length && (
                   <ImageStep img={project.images.location} retriesLeft={project.retriesLeft} busy={busy} label="Ton lieu de tournage"

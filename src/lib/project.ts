@@ -11,7 +11,7 @@ import { currencyOf, fmt, loadPricing, planPrice } from "./pricing";
 // Chaque image peut être régénérée au plus `max_retries` fois (coût inclus dans le prix).
 
 export type Step = "product" | "creator" | "format" | "location" | "style" | "preview" | "video" | "done";
-export type ImageKind = "product" | "creator" | "location" | "frame";
+export type ImageKind = "product" | "creator" | "location" | "frame" | "location_option";
 type Img = { id: string; kind: ImageKind; prompt: string | null; status: string; url: string | null; approved: boolean; apiframe_task_id: string | null };
 
 export type ProjectRow = {
@@ -70,8 +70,8 @@ export async function syncImages(convId: string) {
   }
 }
 
-async function genImage(convId: string, kind: ImageKind, prompt: string, aspect: "16:9" | "9:16", refs: string[]) {
-  const { data } = await db().from("project_images").insert([{ conversation_id: convId, kind, prompt }]).select("id");
+async function genImage(convId: string, kind: ImageKind, prompt: string, aspect: "16:9" | "9:16", refs: string[], optionIndex?: number) {
+  const { data } = await db().from("project_images").insert([{ conversation_id: convId, kind, prompt, option_index: optionIndex ?? null }]).select("id");
   const id = data![0].id as string;
   try {
     const task = await startImageJob(prompt, aspect, refs);
@@ -86,8 +86,18 @@ async function genImage(convId: string, kind: ImageKind, prompt: string, aspect:
 // État complet envoyé au navigateur (sans les prompts techniques).
 export type ProjectState = Awaited<ReturnType<typeof projectState>>;
 
+// Photos des lieux proposés (la plus récente par option).
+async function locationOptionImages(convId: string) {
+  const { data } = await db().from("project_images").select("option_index, status, url, created_at")
+    .eq("conversation_id", convId).eq("kind", "location_option").order("created_at", { ascending: false }).limit(12);
+  const out: Record<number, { status: string; url: string | null }> = {};
+  for (const r of (data ?? []) as { option_index: number; status: string; url: string | null }[]) if (out[r.option_index] === undefined) out[r.option_index] = { status: r.status, url: r.url };
+  return out;
+}
+
 export async function projectState(p: ProjectRow) {
   await syncImages(p.id);
+  const locOpts = p.step === "location" && p.options?.length ? await locationOptionImages(p.id) : {};
   const [imgs, { data: msgs }, { maxRetries }, { data: vids }] = await Promise.all([
     latestImages(p.id),
     db().from("messages").select("role, content, attachments").eq("conversation_id", p.id).order("created_at").limit(200),
@@ -106,6 +116,7 @@ export async function projectState(p: ProjectRow) {
     locationName: p.step === "location" || ORDER.indexOf(p.step) > ORDER.indexOf("location") ? (p.picked?.split(" — ")[0] ?? null) : null,
     shots: p.shots ?? null,
     images: { product: pub(imgs.product), creator: pub(imgs.creator), location: pub(imgs.location), frame: pub(imgs.frame) },
+    locationPhotos: (p.options ?? []).map((_, i) => locOpts[i] ?? null),
     retriesLeft: Math.max(0, maxRetries - (p.retries?.[p.step] ?? 0)),
     messages: (msgs ?? []) as { role: string; content: string; attachments: string[] }[],
     video: v ? { id: v.id, status: v.status === "pending" ? "processing" : v.status, url: v.video_url, style: v.style_id, startedAt: v.created_at } : null,
@@ -212,6 +223,28 @@ async function buildPreview(p: ProjectRow, feedback?: string) {
   await say(p.id, r.message);
 }
 
+// Une photo par lieu proposé (en parallèle), pour que le client choisisse sur image.
+async function proposeLocationPhotos(convId: string, prod: Product, options: Option[]) {
+  await Promise.all(options.slice(0, 3).map(async (o, i) => {
+    try {
+      const r = await awa.locationPrompt(prod, `${o.title} — ${o.detail}`);
+      await genImage(convId, "location_option", r.prompt, "16:9", [], i);
+    } catch {
+      // Une photo manquante n'empêche pas de choisir : le lieu sera alors généré après le choix.
+    }
+  }));
+}
+
+// Lieu choisi : on passe au style, conseillé par Awa.
+async function toStyle(p: ProjectRow, prod: Product, location: string) {
+  const briefs = await styleBriefs(p.user_id);
+  const r = await awa.styleAdvice(prod, p.creator_desc ?? "", findFormat(p.format_id)?.label ?? "", location, briefs);
+  const st = briefs.find((x) => x.id === r.style) ?? briefs[0];
+  const d = st.durations.includes(Number(r.duration)) ? Number(r.duration) : st.durations[0];
+  await update(p.id, { step: "style", options: null, style_id: st.id, duration_s: d, suggested_style: st.id, suggested_reason: r.reason });
+  await say(p.id, r.message);
+}
+
 // ---- Actions ----
 
 export type Action = {
@@ -253,6 +286,7 @@ export async function act(p: ProjectRow, a: Action) {
     await say(p.id, `Format : ${f.label}`, "user");
     const r = await awa.locationOptions(prod, p.creator_desc ?? "");
     await update(p.id, { format_id: f.id, step: "location", options: r.options, picked: null });
+    await proposeLocationPhotos(p.id, prod, r.options);
     await say(p.id, `${f.label}, très bon choix. ${r.message} Tu peux aussi envoyer une photo de ton propre lieu.`);
     return;
   }
@@ -304,6 +338,17 @@ export async function act(p: ProjectRow, a: Action) {
     const choice = opt ? `${opt.title} — ${opt.detail}` : text;
     if (!choice) throw new Error("Choisis une option ou écris ta propre idée.");
     if (p.step !== "creator" && p.step !== "location") throw new Error("Choisis avec les boutons.");
+    if (p.step === "location" && opt && typeof a.index === "number") {
+      const photo = (await locationOptionImages(p.id))[a.index];
+      if (photo?.status === "processing") throw new Error("La photo de ce lieu arrive dans quelques secondes.");
+      if (photo?.status === "ready" && photo.url) {
+        await say(p.id, `Je choisis : ${opt.title}`, "user");
+        await db().from("project_images").insert([{ conversation_id: p.id, kind: "location", status: "ready", approved: true, url: photo.url, prompt: choice }]);
+        await update(p.id, { picked: choice, options: null });
+        await toStyle({ ...p, picked: choice }, prod, choice);
+        return;
+      }
+    }
     await say(p.id, choice, "user");
     await update(p.id, { picked: choice, options: null });
     const r = await imageFor({ ...p, picked: choice }, p.step);
@@ -366,12 +411,7 @@ export async function act(p: ProjectRow, a: Action) {
       await update(p.id, { step: "format", options: r.picks.map((x) => ({ title: x.id, detail: x.reason, format: x.id })), creator_desc: p.picked, creator_id: null, picked: null });
       await say(p.id, r.message);
     } else if (p.step === "location") {
-      const briefs = await styleBriefs(p.user_id);
-      const r = await awa.styleAdvice(prod, p.creator_desc ?? "", findFormat(p.format_id)?.label ?? "", p.picked ?? "", briefs);
-      const st = briefs.find((x) => x.id === r.style) ?? briefs[0];
-      const d = st.durations.includes(Number(r.duration)) ? Number(r.duration) : st.durations[0];
-      await update(p.id, { step: "style", options: null, style_id: st.id, duration_s: d, suggested_style: st.id, suggested_reason: r.reason });
-      await say(p.id, r.message);
+      await toStyle(p, prod, p.picked ?? "");
     } else if (p.step === "preview") {
       if (!p.shots?.length) throw new Error("Le découpage n'est pas prêt.");
       await update(p.id, { step: "video", options: null });

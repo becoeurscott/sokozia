@@ -167,21 +167,34 @@ export function FormatPicks({ picks, busy, onPick }: { picks: { id: string; reas
 
 /* ---------- Étape 4 : lieux proposés + photo du client ---------- */
 
-export function LocationPicks({ options, busy, uploading, onPick, onPhoto }: {
-  options: { title: string; detail: string }[]; busy: boolean; uploading: boolean;
+export function LocationPicks({ options, photos, busy, uploading, onPick, onPhoto }: {
+  options: { title: string; detail: string }[]; photos: ({ status: string; url: string | null } | null)[]; busy: boolean; uploading: boolean;
   onPick: (index: number) => void; onPhoto: (f: File) => void;
 }) {
   return (
     <div className="rounded-3xl border border-line bg-card p-4 shadow-sm">
       <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-accent">Où tourner ?</p>
       <div className="grid gap-2 sm:grid-cols-3">
-        {options.map((o, i) => (
-          <button key={i} disabled={busy} onClick={() => onPick(i)} className={`${card} p-4`}>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 text-accent"><MapPin size={18} /></span>
-            <p className="mt-2 font-bold leading-snug">{o.title}</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">{o.detail}</p>
-          </button>
-        ))}
+        {options.map((o, i) => {
+          const ph = photos[i];
+          const loading = ph?.status === "processing";
+          return (
+            <button key={i} disabled={busy || loading} onClick={() => onPick(i)} className={`${card} overflow-hidden`}>
+              <div className="relative aspect-video bg-bg">
+                {ph?.status === "ready" && ph.url
+                  ? <img src={ph.url} alt={o.title} className="h-full w-full object-cover" />
+                  : <div className="flex h-full flex-col items-center justify-center gap-1.5 text-xs text-muted">
+                      {loading ? <><Loader2 size={18} className="animate-spin" /> Photo en préparation…</> : <MapPin size={20} className="text-accent" />}
+                    </div>}
+              </div>
+              <div className="p-3">
+                <p className="font-bold leading-snug">{o.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted">{o.detail}</p>
+                <span className="mt-2 block rounded-full bg-ink py-1.5 text-center text-xs font-semibold text-white">{loading ? "Patiente…" : "Choisir ce lieu"}</span>
+              </div>
+            </button>
+          );
+        })}
         <label className={`${card} flex cursor-pointer flex-col justify-center border-dashed p-4`}>
           <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand">{uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}</span>
