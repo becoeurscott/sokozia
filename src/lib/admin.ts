@@ -15,10 +15,21 @@ export class AdminError extends Error {
 
 export type AdminUserSession = { id: string; email: string; name: string };
 
+// E-mails administrateurs (variable ADMIN_EMAILS, séparés par des virgules). Le propriétaire est inclus par défaut.
+export function adminEmails() {
+  return [...new Set(["scottbecoeur@gmail.com", ...(process.env.ADMIN_EMAILS ?? "").split(",")].map((e) => e.trim().toLowerCase()).filter(Boolean))];
+}
+
 export async function currentAdmin(): Promise<AdminUserSession | null> {
   const { user, profile } = await getSession();
-  if (!user || !profile?.is_admin) return null;
-  return { id: user.id, email: (user as { email?: string }).email ?? "", name: profile.full_name };
+  if (!user || !profile) return null;
+  const email = ((user as { email?: string }).email ?? "").toLowerCase();
+  if (!profile.is_admin && adminEmails().includes(email)) {
+    // Compte listé dans ADMIN_EMAILS : il devient admin automatiquement.
+    await adminClient().database.from("profiles").update({ is_admin: true }).eq("id", user.id);
+    await adminClient().database.from("admin_audit").insert([{ actor_email: email, action: "user.admin", target_type: "user", target_id: user.id, before: { is_admin: false }, after: { is_admin: true }, reason: "ADMIN_EMAILS" }]);
+  } else if (!profile.is_admin) return null;
+  return { id: user.id, email, name: profile.full_name };
 }
 
 export async function requireAdmin() {

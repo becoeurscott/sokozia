@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // Back-office plein écran (recouvre l'en-tête du site), thème sombre.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user } = await getSession();
-  if (!user) redirect("/connexion?next=/admin");
+  if (!user) redirect("/admin-connexion");
   const admin = await currentAdmin();
   if (!admin) {
     return (
@@ -19,7 +19,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div>
           <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">403</p>
           <h1 className="mt-2 text-2xl font-semibold">Accès réservé aux administrateurs</h1>
-          <Link href="/tableau-de-bord" className="mt-6 inline-block rounded-full bg-white px-4 py-2 text-sm font-medium text-black">Retour à l&apos;app</Link>
+          <p className="mt-2 text-sm text-white/60">Ce compte n&apos;a pas les droits administrateur.</p>
+          <div className="mt-6 flex justify-center gap-2">
+            <Link href="/admin-connexion" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black">Changer de compte</Link>
+            <Link href="/tableau-de-bord" className="rounded-full border border-white/15 px-4 py-2 text-sm">Retour à l&apos;app</Link>
+          </div>
         </div>
       </main>
     );
