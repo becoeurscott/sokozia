@@ -34,7 +34,6 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   { href: "/mes-videos", label: "Mes vidéos" },
                   { href: "/tarifs", label: "Tarifs" },
                   { href: "/compte", label: "Mon compte" },
-                  ...(profile.is_admin ? [{ href: "/admin", label: "Admin" }] : []),
                 ]}
                 cta={{ href: "/studio", label: "Créer" }}
                 signOut={signOut}
