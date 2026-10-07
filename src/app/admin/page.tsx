@@ -1,148 +1,166 @@
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
-import { adminClient, getSession } from "@/lib/insforge";
-import { fmt, loadPricing, planPrice } from "@/lib/pricing";
+import { AlertTriangle, BarChart3, CheckCircle2, Clapperboard, Flame, Smartphone, UserPlus, Users, Wallet } from "lucide-react";
+import Link from "next/link";
+import { MiniBlocks, PillBars, Ring, ShareBars, type BarPoint } from "@/components/admin/charts";
+import { AdminTopBar } from "@/components/admin/AdminTopBar";
+import { Badge, Card, CardHeader, Delta, ErrorBox, KpiCard, STATUS_LABEL, STATUS_TONE, Segmented, fmtDate, fmtNum, fmtUsd, fmtXof, trend } from "@/components/admin/ui";
+import { getOverview, higgsfieldBudget, type DailyPoint } from "@/lib/admin";
 
-async function requireAdmin() {
-  const { profile } = await getSession();
-  if (!profile?.is_admin) redirect("/");
-}
+const RANGES = [{ days: 7, label: "1 sem" }, { days: 30, label: "1 mois" }, { days: 90, label: "3 mois" }, { days: 180, label: "6 mois" }, { days: 365, label: "1 an" }];
+const COLORS = ["#f97316", "#facc15", "#22c55e", "#a855f7", "#3b82f6", "#ef4444"];
 
-async function saveStyle(form: FormData) {
-  "use server";
-  await requireAdmin();
-  const params = String(form.get("apiframe_params") || "{}");
-  await adminClient().database.from("styles").update({
-    name_fr: String(form.get("name_fr")),
-    description_fr: String(form.get("description_fr")),
-    apiframe_model: String(form.get("apiframe_model")),
-    apiframe_params: JSON.parse(params),
-    cost_usd_per_s: Number(form.get("cost_usd_per_s")),
-    durations: JSON.parse(String(form.get("durations") || "[15]")),
-    params_key: String(form.get("params_key")),
-    provider: form.get("provider") === "higgsfield" ? "higgsfield" : "apiframe",
-    hf_endpoint: String(form.get("hf_endpoint") || "") || null,
-    hf_params: JSON.parse(String(form.get("hf_params") || "{}")),
-    image_key: String(form.get("image_key")),
-    active: form.get("active") === "on",
-  }).eq("id", String(form.get("id")));
-  revalidatePath("/", "layout");
-}
-
-async function saveSettings(form: FormData) {
-  "use server";
-  await requireAdmin();
-  const db = adminClient().database;
-  for (const key of ["multipliers", "monthly_videos", "fx", "image_provider"]) {
-    await db.from("settings").update({ value: JSON.parse(String(form.get(key))) }).eq("key", key);
+/** Jours jusqu'à 30 j, semaines jusqu'à 180 j, mois au-delà (les sommes restent exactes). */
+function bucket(daily: DailyPoint[], days: number) {
+  const fmt = (d: Date, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("fr-FR", { ...o, timeZone: "UTC" }).format(d);
+  if (days <= 30) return daily.map((d) => ({ ...d, label: fmt(new Date(d.day), { day: "numeric", month: "short" }) }));
+  const groups = new Map<string, DailyPoint & { label: string }>();
+  for (const d of daily) {
+    const t = new Date(d.day);
+    const monday = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() - ((t.getUTCDay() + 6) % 7)));
+    const [key, label] = days <= 180 ? [monday.toISOString(), fmt(monday, { day: "numeric", month: "short" })] : [`${t.getUTCFullYear()}-${t.getUTCMonth()}`, fmt(t, { month: "short" })];
+    const g = groups.get(key) ?? { day: key, label, revenue: 0, videos: 0, failed: 0, users: 0 };
+    g.revenue += d.revenue; g.videos += d.videos; g.failed += d.failed; g.users += d.users;
+    groups.set(key, g);
   }
-  revalidatePath("/", "layout");
+  return [...groups.values()];
 }
 
-export default async function Page() {
-  await requireAdmin();
-  const db = adminClient().database;
-  const since30 = new Date(Date.now() - 30 * 86400000).toISOString();
-  const [{ data: payments }, { data: users }, { data: vids30 }] = await Promise.all([
-    db.from("payments").select("id, created_at, plan, style_id, duration_s, amount, currency, status, correspondent, phone").order("created_at", { ascending: false }).limit(200),
-    db.from("profiles").select("id"),
-    db.from("videos").select("status").gt("created_at", since30),
-  ]);
-  const paid = (payments ?? []).filter((p) => p.status === "completed");
-  const revenue = paid.filter((p) => p.created_at > since30).reduce<Record<string, number>>((r, p) => ({ ...r, [p.currency]: (r[p.currency] ?? 0) + p.amount }), {});
-  const vstat = (vids30 ?? []).reduce<Record<string, number>>((r, v) => ({ ...r, [v.status]: (r[v.status] ?? 0) + 1 }), {});
-  const [{ data: styles }, { data: settings }, { data: videos }, pricing] = await Promise.all([
-    db.from("styles").select("*").order("sort"),
-    db.from("settings").select("key, value"),
-    db.from("videos").select("id, status, video_url, style_id, prompt, created_at").order("created_at", { ascending: false }).limit(60),
-    loadPricing(),
-  ]);
-  const s = Object.fromEntries((settings ?? []).map((r: { key: string; value: unknown }) => [r.key, JSON.stringify(r.value)]));
+export default async function AdminOverview({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
+  const sp = await searchParams;
+  const days = RANGES.some((r) => String(r.days) === sp.days) ? Number(sp.days) : 30;
+  let o, budget;
+  try {
+    o = await getOverview(days);
+    budget = await higgsfieldBudget(o.budget);
+  } catch (e) {
+    return <><AdminTopBar title="Vue d’ensemble" /><ErrorBox message={e instanceof Error ? e.message : "erreur"} retryHref={`/admin?days=${days}`} /></>;
+  }
+
+  const series = bucket(o.daily, days);
+  const bars: BarPoint[] = series.map((d) => ({ label: d.label, value: d.revenue, secondary: d.videos }));
+  const spark = (k: keyof DailyPoint) => series.slice(-8).map((d) => Number(d[k]));
+  const rangeLabel = RANGES.find((r) => r.days === days)?.label ?? "";
+  const failRate = o.videos.total ? (o.videos.failed / o.videos.total) * 100 : 0;
+  const marginXof = o.revenue.cur - o.spend.cur * o.budget.usdToXof;
+
+  const alerts: { tone: "red" | "orange" | "green"; text: React.ReactNode; href?: string }[] = [];
+  if (!budget.configured) alerts.push({ tone: "orange", text: <>Le budget Higgsfield n&apos;est pas renseigné : impossible de savoir ce qu&apos;il reste.</>, href: "/admin/higgsfield" });
+  else if (budget.leftUsd <= 0) alerts.push({ tone: "red", text: <>Budget Higgsfield <b>épuisé</b> ({fmtUsd(budget.leftUsd)}). Les pubs vont échouer.</>, href: "/admin/higgsfield" });
+  else if (budget.low) alerts.push({ tone: "red", text: <>Il ne reste que <b>{fmtUsd(budget.leftUsd)}</b> sur Higgsfield. Pense à recharger.</>, href: "/admin/higgsfield" });
+  if (o.videos.total >= 5 && failRate >= 10) alerts.push({ tone: "red", text: <><b>{fmtNum(failRate, 1)} %</b> des pubs ont échoué sur la période ({o.videos.failed}).</>, href: "/admin/pubs?status=failed" });
+  if (o.videos.running > 0) alerts.push({ tone: "orange", text: <><b>{o.videos.running}</b> pub(s) en cours de création.</>, href: "/admin/pubs?status=running" });
+  if (o.byPayStatus.pending > 0) alerts.push({ tone: "orange", text: <><b>{o.byPayStatus.pending}</b> paiement(s) en attente de confirmation.</>, href: "/admin/paiements?status=pending" });
+  if (o.users.new > 0) alerts.push({ tone: "green", text: <><b>{o.users.new}</b> nouveau(x) compte(s) sur la période.</>, href: "/admin/utilisateurs" });
+  if (!alerts.length) alerts.push({ tone: "green", text: <>Tout est normal sur la période.</> });
 
   return (
-    <div className="mx-auto max-w-6xl space-y-10 px-4 py-10">
-      <h1 className="text-3xl font-extrabold">Admin</h1>
+    <>
+      <AdminTopBar title="Vue d’ensemble" subtitle="Comptes, ventes, pubs créées et dépenses Higgsfield"
+        pill={`${fmtDate(o.from)} → ${fmtDate(o.to)}`}
+        actions={<Segmented active={String(days)} items={RANGES.map((r) => ({ key: String(r.days), label: r.label, href: `/admin?days=${r.days}` }))} />} />
 
-      <section>
-        <h2 className="mb-3 text-xl font-bold">Activité (30 derniers jours)</h2>
-        <div className="grid gap-3 sm:grid-cols-4">
-          <div className="card"><p className="text-xs text-muted">Chiffre d&apos;affaires</p><p className="text-xl font-extrabold">{Object.entries(revenue).map(([c, a]) => fmt(a, c)).join(" · ") || "0"}</p></div>
-          <div className="card"><p className="text-xs text-muted">Paiements réussis</p><p className="text-xl font-extrabold">{paid.filter((p) => p.created_at > since30).length}</p></div>
-          <div className="card"><p className="text-xs text-muted">Comptes</p><p className="text-xl font-extrabold">{users?.length ?? 0}</p></div>
-          <div className="card"><p className="text-xs text-muted">Pubs créées / échouées</p><p className="text-xl font-extrabold">{vstat.ready ?? 0} / {vstat.failed ?? 0}</p></div>
-        </div>
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-card">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-bg text-xs text-muted"><tr><th className="p-3">Date</th><th className="p-3">Offre</th><th className="p-3">Montant</th><th className="p-3">Opérateur</th><th className="p-3">Téléphone</th><th className="p-3">Statut</th></tr></thead>
-            <tbody>
-              {(payments ?? []).slice(0, 30).map((p) => (
-                <tr key={p.id} className="border-t border-line">
-                  <td className="p-3 whitespace-nowrap">{new Date(p.created_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</td>
-                  <td className="p-3">{p.plan} · {p.style_id} {p.duration_s} s</td>
-                  <td className="p-3 whitespace-nowrap">{fmt(p.amount, p.currency)}</td>
-                  <td className="p-3">{p.correspondent ?? "—"}</td>
-                  <td className="p-3">{p.phone ?? "—"}</td>
-                  <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${p.status === "completed" ? "bg-accent/10 text-accent" : p.status === "failed" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"}`}>{{ completed: "payé", failed: "échoué", pending: "en attente" }[p.status as string] ?? p.status}</span></td>
-                </tr>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard icon={<Users />} title="Utilisateurs" value={fmtNum(o.users.total)} sub={`+${fmtNum(o.users.new)} sur ${rangeLabel} · ${fmtNum(o.users.active)} actifs`}
+          graphic={<MiniBlocks values={spark("users")} color="#3b82f6" />} footer={<><span>Nouveaux vs période préc.</span><Delta value={trend(o.users.new, o.users.newPrev)} /></>} />
+        <KpiCard icon={<Smartphone />} title="Chiffre d’affaires" value={fmtXof(o.revenue.cur)} sub={`${fmtNum(o.revenue.payments)} paiement(s) Mobile Money`}
+          graphic={<MiniBlocks values={spark("revenue")} color="#22c55e" />} footer={<><span>vs période préc.</span><Delta value={trend(o.revenue.cur, o.revenue.prev)} /></>} />
+        <KpiCard icon={<Clapperboard />} title="Pubs créées" value={fmtNum(o.videos.ready)} sub={`${fmtNum(o.videos.failed)} échec(s) · ${fmtNum(o.spend.images)} images`}
+          graphic={<MiniBlocks values={spark("videos")} color="#a855f7" />} footer={<><span>vs période préc.</span><Delta value={trend(o.videos.ready, o.videos.readyPrev)} /></>} />
+        <KpiCard icon={<Wallet />} title="Budget Higgsfield restant" value={budget.configured ? fmtUsd(budget.leftUsd) : "À configurer"}
+          sub={budget.configured ? `${fmtUsd(budget.spentUsd)} dépensés sur ${fmtUsd(budget.budgetUsd)}` : "Renseigne le montant rechargé"}
+          graphic={budget.configured ? <Ring pct={100 - budget.usedPct} color={budget.low ? "#ef4444" : "#22c55e"} /> : undefined}
+          footer={<><span>Depuis le {fmtDate(o.budget.hfBudgetSince)}</span><Link href="/admin/higgsfield" className="text-[#f08a3c] hover:underline">Modifier</Link></>} />
+      </div>
+
+      <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <Card>
+          <CardHeader icon={<BarChart3 />} title="Ventes et pubs" action={<span className="text-[12px] text-white/45">{fmtXof(o.revenue.cur)} · {fmtNum(o.videos.ready)} pubs · {rangeLabel}</span>} />
+          <PillBars data={bars} primaryLabel="Ventes (FCFA)" secondaryLabel="Pubs créées" />
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            {[["Ventes", fmtXof(o.revenue.cur)], ["Coût Higgsfield", fmtUsd(o.spend.cur)], ["Marge estimée", fmtXof(marginXof)]].map(([l, v]) => (
+              <div key={l} className="rounded-xl bg-white/[0.03] p-2.5"><p className="text-[14px] font-semibold tabular-nums">{v}</p><p className="text-[11px] text-white/45">{l}</p></div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="flex flex-col">
+          <CardHeader icon={<Clapperboard />} title="Dernières pubs" action={<Link href="/admin/pubs" className="text-[12px] text-white/70 hover:text-white">Tout voir</Link>} />
+          {o.latestVideos.length ? (
+            <ul className="max-h-[340px] space-y-1.5 overflow-y-auto pr-1">
+              {o.latestVideos.map((v) => (
+                <li key={v.id}>
+                  <Link href={`/admin/pubs?q=${v.id}`} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5 hover:bg-white/[0.06]">
+                    <span className="h-12 w-8 shrink-0 overflow-hidden rounded-lg bg-white/[0.06]">
+                      {v.video_url ? <video src={v.video_url} muted playsInline preload="metadata" className="size-full object-cover" /> : <span className="grid size-full place-items-center text-[10px] text-white/45">▶</span>}
+                    </span>
+                    <span className="min-w-0 flex-1 leading-tight">
+                      <span className="block truncate text-[13px]">{v.email ?? "—"}</span>
+                      <span className="block truncate text-[11px] text-white/45">{v.style} · {v.duration_s} s · {fmtDate(v.created_at, true)}</span>
+                    </span>
+                    <Badge tone={STATUS_TONE[v.status]}>{STATUS_LABEL[v.status] ?? v.status}</Badge>
+                  </Link>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            </ul>
+          ) : <p className="py-10 text-center text-[13px] text-white/45">Aucune pub pour l&apos;instant.</p>}
+        </Card>
 
-      <section>
-        <h2 className="mb-3 text-xl font-bold">Styles (modèles cachés aux clients)</h2>
-        <p className="mb-3 text-sm text-muted">Prix client = coût réel $/s × durée × multiplicateur, converti et arrondi. Mets le coût réel selon ta facture APIFrame.</p>
-        <div className="space-y-3">
-          {(styles ?? []).map((st) => (
-            <form key={st.id} action={saveStyle} className="card grid gap-2 text-sm sm:grid-cols-4">
-              <input type="hidden" name="id" value={st.id} />
-              <label>Nom<input name="name_fr" defaultValue={st.name_fr} className="input" /></label>
-              <label>Fournisseur<select name="provider" defaultValue={st.provider ?? "apiframe"} className="input"><option value="apiframe">APIFrame</option><option value="higgsfield">Higgsfield</option></select></label>
-              <label className="sm:col-span-2">Endpoint Higgsfield<input name="hf_endpoint" defaultValue={st.hf_endpoint ?? ""} placeholder="bytedance/seedance-2.5/reference-to-video" className="input font-mono" /></label>
-              <label>Paramètres Higgsfield (JSON)<input name="hf_params" defaultValue={JSON.stringify(st.hf_params ?? {})} className="input font-mono" /></label>
-              <label>Modèle APIFrame<input name="apiframe_model" defaultValue={st.apiframe_model} className="input" /></label>
-              <label>Objet params<input name="params_key" defaultValue={st.params_key} className="input font-mono" /></label>
-              <label>Champ image<input name="image_key" defaultValue={st.image_key} className="input font-mono" /></label>
-              <label>Paramètres (JSON)<input name="apiframe_params" defaultValue={JSON.stringify(st.apiframe_params)} className="input font-mono" /></label>
-              <label>Coût réel $ / seconde<input name="cost_usd_per_s" type="number" step="0.01" defaultValue={st.cost_usd_per_s} className="input" /></label>
-              <label className="sm:col-span-2">Description<input name="description_fr" defaultValue={st.description_fr} className="input" /></label>
-              <label>Durées (JSON)<input name="durations" defaultValue={JSON.stringify(st.durations)} className="input font-mono" /></label>
-              <p className="text-muted sm:col-span-3">
-                {(st.durations as number[]).map((d) => { const ps = { ...st, cost_usd_per_s: Number(st.cost_usd_per_s) }; return <span key={d} className="block">{d} s (coût {(ps.cost_usd_per_s * d).toFixed(2)} $) — 1 pub : {fmt(planPrice(pricing, "single", ps, d, "XAF"), "XAF")} · pack 5 : {fmt(planPrice(pricing, "pack5", ps, d, "XAF"), "XAF")} · mensuel : {fmt(planPrice(pricing, "monthly", ps, d, "XAF"), "XAF")}</span>; })}
-              </p>
-              <div className="flex items-center justify-end gap-3">
-                <label className="flex items-center gap-2"><input type="checkbox" name="active" defaultChecked={st.active} /> Actif</label>
-                <button className="btn !py-2">Enregistrer</button>
-              </div>
-            </form>
-          ))}
-        </div>
-      </section>
+        <Card className="relative flex flex-col overflow-hidden">
+          <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-[#f08a3c]/20 blur-3xl" />
+          <CardHeader icon={<AlertTriangle />} title="Alertes" />
+          <ul className="relative flex-1 space-y-3">
+            {alerts.map((a, i) => {
+              const body = (
+                <span className="flex items-start gap-3">
+                  <span className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg ${a.tone === "red" ? "bg-red-500/15 text-red-400" : a.tone === "orange" ? "bg-[#f08a3c]/15 text-[#f08a3c]" : "bg-emerald-500/15 text-emerald-400"}`}>
+                    {a.tone === "green" ? <CheckCircle2 className="size-3.5" /> : <AlertTriangle className="size-3.5" />}
+                  </span>
+                  <span className="text-[13px] leading-snug text-white/70 [&_b]:text-white">{a.text}</span>
+                </span>
+              );
+              return <li key={i}>{a.href ? <Link href={a.href} className="block rounded-lg hover:bg-white/[0.03]">{body}</Link> : body}</li>;
+            })}
+          </ul>
+          <Link href="/admin/higgsfield" className="relative mt-4 flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#f08a3c] to-[#ef4444] text-[13px] font-medium text-white hover:opacity-90">
+            <Wallet className="size-4" /> Mettre à jour le budget Higgsfield
+          </Link>
+        </Card>
+      </div>
 
-      <section>
-        <h2 className="mb-3 text-xl font-bold">Réglages de prix</h2>
-        <form action={saveSettings} className="card grid gap-3 text-sm sm:grid-cols-2">
-          <label>Multiplicateurs (unité / pack5 / mensuel)<input name="multipliers" defaultValue={s.multipliers} className="input font-mono" /></label>
-          <label>Vidéos par abonnement mensuel<input name="monthly_videos" defaultValue={s.monthly_videos} className="input font-mono" /></label>
-          <label className="sm:col-span-2">Images de référence (provider apiframe | higgsfield)<input name="image_provider" defaultValue={s.image_provider} className="input font-mono" /></label>
-          <label>Taux de change (1 $ =)<input name="fx" defaultValue={s.fx} className="input font-mono" /></label>
-          <div className="sm:col-span-2"><button className="btn">Enregistrer</button></div>
-        </form>
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-xl font-bold">Bibliothèque (toutes les vidéos — propriété Sokozia)</h2>
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {(videos ?? []).map((v) => (
-            <div key={v.id} className="card text-xs">
-              {v.video_url ? <video src={v.video_url} controls preload="metadata" className="aspect-[9/16] w-full rounded-lg bg-black" /> : <p className="text-muted">{v.status}</p>}
-              <p className="mt-2 line-clamp-3 text-muted">{v.prompt}</p>
-              <p className="mt-1 font-semibold">{v.style_id} · {new Date(v.created_at).toLocaleDateString("fr-FR")}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
+      <div className="mt-3 grid gap-3 lg:grid-cols-3">
+        <Card>
+          <CardHeader icon={<Flame />} title="Pubs et coût par style" action={<span className="text-[12px] text-white/45">{rangeLabel}</span>} />
+          {o.byStyle.length ? <ShareBars items={o.byStyle.map((s, i) => ({ label: s.name, value: s.videos, hint: `${fmtUsd(s.usd)}`, color: COLORS[i % 6] }))} unit=" pubs" />
+            : <p className="py-6 text-center text-[13px] text-white/45">Aucune pub sur la période.</p>}
+        </Card>
+        <Card>
+          <CardHeader icon={<Smartphone />} title="Ventes par opérateur" />
+          {o.byOperator.length ? <ShareBars items={o.byOperator.map((x, i) => ({ label: x.op.replaceAll("_", " "), value: x.amount, color: COLORS[(i + 2) % 6] }))} unit=" FCFA" />
+            : <p className="py-6 text-center text-[13px] text-white/45">Aucune vente sur la période.</p>}
+          <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+            {[["Payés", o.byPayStatus.completed], ["Échoués", o.byPayStatus.failed], ["En attente", o.byPayStatus.pending]].map(([l, v]) => (
+              <Link key={l as string} href={`/admin/paiements?status=${({ Payés: "completed", Échoués: "failed", "En attente": "pending" } as Record<string, string>)[l as string]}`} className="rounded-xl bg-white/[0.03] p-2.5 hover:bg-white/[0.06]">
+                <p className="text-[15px] font-semibold tabular-nums">{fmtNum(v as number)}</p><p className="text-[11px] text-white/45">{l}</p>
+              </Link>
+            ))}
+          </div>
+        </Card>
+        <Card>
+          <CardHeader icon={<UserPlus />} title="Derniers inscrits" action={<Link href="/admin/utilisateurs" className="text-[12px] text-white/70 hover:text-white">Tout voir</Link>} />
+          <ul className="space-y-1.5">
+            {o.latestUsers.map((u) => (
+              <li key={u.id}>
+                <Link href={`/admin/utilisateurs/${u.id}`} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5 hover:bg-white/[0.06]">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/[0.08] text-[12px] font-semibold">{(u.name || u.email).slice(0, 1).toUpperCase()}</span>
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <span className="block truncate text-[13px]">{u.name || u.email}</span>
+                    <span className="block truncate text-[11px] text-white/45">{fmtDate(u.created_at)} · {u.country}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+    </>
   );
 }
