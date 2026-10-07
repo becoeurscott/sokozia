@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAuthActions } from "@insforge/sdk/ssr";
 import { adminClient, getSession } from "@/lib/insforge";
@@ -76,13 +76,21 @@ export async function signOut() {
   redirect("/");
 }
 
+// Domaine sur lequel le visiteur se trouve (sokozia.com, www, ou l'URL InsForge) : le retour Google doit
+// revenir sur le même domaine, sinon les cookies de connexion sont perdus.
+async function siteOrigin() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  return host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}` : process.env.NEXT_PUBLIC_APP_URL!;
+}
+
 // Connexion / inscription avec Google : on prépare l'URL Google côté serveur (PKCE) puis on redirige.
 export async function signInWithGoogle(form: FormData) {
   const store = await cookies();
   const next = String(form.get("next") ?? "");
   const auth = createAuthActions({ cookies: store });
   const { data, error } = await auth.signInWithOAuth("google", {
-    redirectTo: new URL("/api/auth/callback", process.env.NEXT_PUBLIC_APP_URL).toString(),
+    redirectTo: new URL("/api/auth/callback", await siteOrigin()).toString(),
     additionalParams: { prompt: "select_account" },
     skipBrowserRedirect: true,
   });

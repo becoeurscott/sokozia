@@ -4,7 +4,8 @@ import { createAuthActions } from "@insforge/sdk/ssr";
 // Retour de Google : on échange le code contre une session (cookies), puis direction le studio.
 // Le profil Sokozia est créé automatiquement à la première visite (getSession).
 export async function GET(request: NextRequest) {
-  const base = process.env.NEXT_PUBLIC_APP_URL || request.url;
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const base = host ? `${request.headers.get("x-forwarded-proto") ?? "https"}://${host}` : request.url;
   const code = request.nextUrl.searchParams.get("insforge_code");
   const verifier = request.cookies.get("insforge_code_verifier")?.value;
   if (request.nextUrl.searchParams.get("error") || !code || !verifier)
