@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { Clapperboard, Globe2, ImageIcon, Languages, RotateCcw, Smartphone, Sparkles, Users } from "lucide-react";
 import { adminClient, getSession } from "@/lib/insforge";
 import { activePasses } from "@/lib/passes";
@@ -22,6 +23,14 @@ export default async function Page() {
   const { profile } = await getSession();
   if (!profile) redirect("/connexion?next=/tableau-de-bord");
   const db = adminClient().database;
+  // Nouveau compte sans aucun achat : onboarding (formule + paiement) avant le tableau de bord.
+  if (!profile.is_admin && !(await cookies()).get("sz_onboarded")) {
+    const [{ data: anyPass }, { data: anyPay }] = await Promise.all([
+      db.from("video_passes").select("id").eq("user_id", profile.id).limit(1),
+      db.from("payments").select("id").eq("user_id", profile.id).limit(1),
+    ]);
+    if (!anyPass?.length && !anyPay?.length) redirect("/bienvenue");
+  }
   const [{ data: convs }, { data: videos }, passes, { data: styles }] = await Promise.all([
     db.from("conversations").select("id, title, step, created_at").eq("user_id", profile.id).order("created_at", { ascending: false }).limit(30),
     db.from("videos").select("id, status, video_url, created_at").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(6),
