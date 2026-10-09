@@ -1,5 +1,6 @@
 import { adminClient } from "./insforge";
 import { depositStatus } from "./pawapay";
+import { checkoutStatus } from "./stripe";
 import { consumePass } from "./passes";
 import { startGeneration } from "./generation";
 
@@ -10,7 +11,10 @@ export async function settlePayment(paymentId: string) {
   const { data: rows } = await db.from("payments").select("*").eq("id", paymentId).limit(1);
   const p = rows?.[0];
   if (!p || p.status !== "pending") return p?.status ?? "unknown";
-  const d = await depositStatus(paymentId);
+  const session = (p.raw as { stripe_session?: string } | null)?.stripe_session;
+  const d = p.method === "card"
+    ? (session ? await checkoutStatus(session) : { status: "NOT_FOUND", amount: 0, currency: "", provider: "CARD", raw: null })
+    : await depositStatus(paymentId);
 
   if (d.status === "FAILED") {
     await db.from("payments").update({ status: "failed", raw: d.raw, updated_at: new Date().toISOString() })

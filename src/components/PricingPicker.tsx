@@ -60,7 +60,7 @@ export default function PricingPicker({ rows, loggedIn }: { rows: PriceRow[]; lo
               </p>
               {p.saving > 0 && <p className="mt-3 w-fit rounded-full bg-accent/15 px-3 py-1 text-xs font-bold text-accent">Tu économises {p.saving} %</p>}
               <div className="mt-6 flex-1" />
-              <BuyButton plan={p.plan} styleId={row.id} duration={dur} loggedIn={loggedIn} />
+              <BuyButton plan={p.plan} styleId={row.id} duration={dur} loggedIn={loggedIn} price={p.total} />
             </div>
           );
         })}

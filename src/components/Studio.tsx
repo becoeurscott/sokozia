@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Thinking } from "./Thinking";
+import { PayMethod, type PayMethodKind } from "./PayMethod";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, Film, FolderOpen, ImagePlus, LayoutGrid, Loader2, Plus, Sparkles, Wallet, X } from "lucide-react";
 import type { ProjectState } from "@/lib/project";
@@ -237,12 +238,14 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
     open(project.id);
   }
 
-  async function buy() {
+  const [payOpen, setPayOpen] = useState(false);
+  const buy = () => setPayOpen(true);
+  async function pay(method: PayMethodKind) {
     if (!project?.styleId || !project.duration) return;
     setBusy(true);
-    const r = await post("/api/pay", { plan: "single", styleId: project.styleId, duration: project.duration, conversationId: project.id });
-    setBusy(false);
-    if (r.url) window.location.href = r.url; else setError(r.error);
+    const r = await post("/api/pay", { plan: "single", styleId: project.styleId, duration: project.duration, conversationId: project.id, method });
+    if (r.url) { window.location.href = r.url; return; }
+    setBusy(false); setPayOpen(false); setError(r.error);
   }
 
   const groups = convs.reduce<Record<string, Conv[]>>((g, c) => ((g[groupLabel(c.created_at)] ??= []).push(c), g), {});
@@ -428,6 +431,7 @@ export default function Studio({ conversations, styles: initialStyles, packs, is
                         ) : (
                           <>
                             <button onClick={buy} disabled={busy} className="mt-4 w-full rounded-full bg-brand py-3.5 font-semibold text-white disabled:opacity-50">Payer {opt.price} et créer la pub</button>
+                            <PayMethod open={payOpen} busy={busy} price={opt.price} onPick={pay} onClose={() => !busy && setPayOpen(false)} />
                             <p className="mt-2 text-xs text-white/60">Paiement Mobile Money. La création démarre dès confirmation.</p>
                           </>
                         )}
