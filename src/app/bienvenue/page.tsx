@@ -31,7 +31,7 @@ export default async function Page() {
         <Link href="/tarifs" className="btn-ghost">Voir les prix</Link>
       </div>
       <form action={later} className="mt-8">
-        <button className="text-sm text-muted underline hover:text-ink">Plus tard, voir mon tableau de bord</button>
+        <button className="text-sm text-muted underline hover:text-ink">Plus tard, aller au studio</button>
       </form>
     </div>
   );

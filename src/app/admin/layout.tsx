@@ -23,7 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <p className="mt-2 text-sm text-white/60">Ce compte n&apos;a pas les droits administrateur.</p>
           <div className="mt-6 flex justify-center gap-2">
             <Link href="/admin-connexion" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black">Changer de compte</Link>
-            <Link href="/tableau-de-bord" className="rounded-full border border-white/15 px-4 py-2 text-sm">Retour à l&apos;app</Link>
+            <Link href="/studio" className="rounded-full border border-white/15 px-4 py-2 text-sm">Retour à l&apos;app</Link>
           </div>
         </div>
       </main>

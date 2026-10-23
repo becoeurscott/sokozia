@@ -36,7 +36,7 @@ export function AdminNav({ admin }: { admin: { name: string; email: string } }) 
           ))}
         </nav>
         <div className="mt-auto space-y-3">
-          <Link href="/tableau-de-bord" className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] text-white/45 hover:text-white"><ArrowLeft className="size-3.5" /> Retour à l&apos;app</Link>
+          <Link href="/studio" className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] text-white/45 hover:text-white"><ArrowLeft className="size-3.5" /> Retour à l&apos;app</Link>
           <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5">
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#f08a3c] to-amber-300 text-[12px] font-bold text-black">{(admin.name || admin.email).slice(0, 1).toUpperCase()}</span>
             <span className="min-w-0 leading-tight">

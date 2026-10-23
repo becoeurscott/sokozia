@@ -37,7 +37,7 @@ export default async function Page() {
           <h1 className="text-3xl font-extrabold">Mon compte</h1>
           {since && <p className="text-sm text-muted">Membre depuis le {new Date(since).toLocaleDateString("fr-FR")}</p>}
         </div>
-        <Link href="/tableau-de-bord" className="rounded-full border border-line bg-card px-4 py-2 text-sm font-semibold">← Tableau de bord</Link>
+        <Link href="/studio" className="rounded-full border border-line bg-card px-4 py-2 text-sm font-semibold">← Studio</Link>
       </div>
 
       <div className="grid gap-6 md:grid-cols-[1.3fr_1fr]">

@@ -30,7 +30,7 @@ export async function signUp(_: State, form: FormData): Promise<State> {
   });
   if (data && "accessToken" in data && data.accessToken) await finishProfile();
   else return { step: "verify", email };
-  redirect("/tableau-de-bord");
+  redirect("/studio");
 }
 
 export async function verify(_: State, form: FormData): Promise<State> {
@@ -40,7 +40,7 @@ export async function verify(_: State, form: FormData): Promise<State> {
   const { error } = await auth.verifyEmail({ email, otp });
   if (error) return { step: "verify", email, error: fr(error.message) };
   await finishProfile();
-  redirect("/tableau-de-bord");
+  redirect("/studio");
 }
 
 async function finishProfile() {
@@ -67,7 +67,7 @@ export async function signIn(_: State, form: FormData): Promise<State> {
     return msg.includes("vérifié") ? { step: "verify", email, error: msg } : { error: msg };
   }
   const next = String(form.get("next") ?? "");
-  redirect(/^\/[^/\\]/.test(next) ? next : "/tableau-de-bord");
+  redirect(/^\/[^/\\]/.test(next) ? next : "/studio");
 }
 
 export async function signOut() {
