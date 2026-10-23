@@ -1,15 +1,18 @@
 import { adminClient } from "./insforge";
 import { getJobStatus, STYLE_COLS, startVideoJob, type StyleRow } from "./providers";
 import { refundPass } from "./passes";
+import { walletApply } from "./wallet";
 import { syncImages } from "./project";
 
-type Row = { id: string; created_by: string; status: string; apiframe_task_id: string | null; pass_id: string | null; video_url: string | null; image_url?: string | null; conversation_id?: string | null; style_id?: string; duration_s?: number; prompt?: string };
+type Row = { created_at?: string; price?: number | null; currency?: string | null; wallet_tx?: string | null; id: string; created_by: string; status: string; apiframe_task_id: string | null; pass_id: string | null; video_url: string | null; image_url?: string | null; conversation_id?: string | null; style_id?: string; duration_s?: number; prompt?: string };
 
 async function failVideo(v: Row, error: string) {
   const { data: claimed } = await adminClient().database.from("videos")
     .update({ status: "failed", error, updated_at: new Date().toISOString() })
     .eq("id", v.id).in("status", ["pending", "processing"]).select("id");
   if (claimed?.length && v.pass_id) await refundPass(v.pass_id);
+  // Génération payée par le portefeuille : on recrédite le montant.
+  if (claimed?.length && v.wallet_tx && v.price) await walletApply(v.created_by, v.price, "refund", "Remboursement · génération échouée", v.id, v.currency ?? "XOF");
   // Le projet revient à l'étape vidéo pour pouvoir relancer (la pub n'a pas été décomptée).
   if (claimed?.length && v.conversation_id) await adminClient().database.from("conversations").update({ step: "video" }).eq("id", v.conversation_id);
   return { ...v, status: "failed" };
@@ -37,6 +40,8 @@ export async function syncVideo(v: Row): Promise<Row> {
   }
 
   if (v.status !== "processing" || !v.apiframe_task_id) return v;
+  // Filet de sécurité : une génération bloquée depuis plus de 45 min est annulée et remboursée.
+  if (v.created_at && Date.now() - new Date(v.created_at).getTime() > 45 * 60000) return failVideo(v, "timeout");
   const job = await getJobStatus(v.apiframe_task_id);
   if (job.status === "failed") return failVideo(v, String(job.error ?? "failed"));
   if (job.status !== "ready" || !job.url) return v;
@@ -51,4 +56,4 @@ export async function syncVideo(v: Row): Promise<Row> {
   return { ...v, status: "ready", video_url: up.url };
 }
 
-export const VIDEO_COLS = "id, created_by, status, apiframe_task_id, pass_id, video_url, image_url, conversation_id, style_id, duration_s, prompt";
+export const VIDEO_COLS = "id, created_by, status, apiframe_task_id, pass_id, video_url, image_url, conversation_id, style_id, duration_s, prompt, price, currency, wallet_tx, created_at";

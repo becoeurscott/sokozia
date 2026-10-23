@@ -19,9 +19,9 @@ async function direct(url: string) {
 }
 const directAll = (urls: string[]) => Promise.all(urls.map(direct));
 
-export async function startVideoJob(style: StyleRow, prompt: string, duration: number, o: { startImage?: string | null; refs?: string[] } = {}) {
+export async function startVideoJob(style: StyleRow, prompt: string, duration: number, o: { startImage?: string | null; refs?: string[]; aspect?: string } = {}) {
   if (style.provider === "higgsfield" && style.hf_endpoint) {
-    const input: Record<string, unknown> = { prompt, duration, aspect_ratio: "9:16", ...(style.hf_params ?? {}) };
+    const input: Record<string, unknown> = { prompt, duration, aspect_ratio: o.aspect ?? "9:16", ...(style.hf_params ?? {}) };
     if (o.refs?.length) input.image_urls = await directAll(o.refs.slice(0, 4));
     else if (o.startImage) input.image_url = await direct(o.startImage);
     return `hf:${await hfSubmit(style.hf_endpoint, input)}`;

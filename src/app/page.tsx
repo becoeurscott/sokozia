@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { quote } from "@/lib/quote";
 import { Building2, Clapperboard, Crown, PartyPopper, Shirt, Smartphone, Sparkles, UtensilsCrossed, Video, Zap } from "lucide-react";
-import { fmt, loadPricing, videoPrice } from "@/lib/pricing";
+import { fmt, loadPricing } from "@/lib/pricing";
 import Showcase from "@/components/Showcase";
 import Testimonials from "@/components/Testimonials";
 import CreatorsSection from "@/components/CreatorsSection";
@@ -17,16 +18,17 @@ const uses = [
 const styleIcons = [Zap, Video, Clapperboard, Crown];
 
 const faq = [
-  ["Je dois savoir faire des vidéos ?", "Non. Tu réponds à quelques questions simples, Awa écrit le script et on crée la vidéo."],
-  ["Comment je paye ?", "Par Mobile Money : Orange Money, MTN MoMo, Moov, Airtel, M-Pesa. Paiement sécurisé par pawaPay."],
-  ["Combien de temps ça prend ?", "Entre 5 et 15 minutes selon la durée et le style."],
-  ["Et si la vidéo ne marche pas ?", "Ta pub n'est pas décomptée : tu peux la relancer gratuitement."],
+  ["Je dois savoir faire des vidéos ?", "Non. Tu ajoutes la photo de ton produit, tu décris la vidéo en une phrase, et l'IA la crée."],
+  ["Comment je paye ?", "Tu recharges ton solde par Mobile Money (Orange Money, MTN MoMo, Moov, Wave, Airtel, M-Pesa) ou par carte. Chaque vidéo est débitée à l'usage, sans abonnement."],
+  ["Combien de temps ça prend ?", "En général 2 à 5 minutes selon le modèle et la durée."],
+  ["Et si la vidéo ne marche pas ?", "Si la création échoue, ton solde est remboursé automatiquement."],
   ["Je peux l'utiliser pour mes pubs ?", "Oui, sur TikTok, Facebook, Instagram, WhatsApp et ton site. Les vidéos restent la propriété de Sokozia (voir conditions)."],
 ];
 
 export default async function Home() {
   const pricing = await loadPricing();
-  const from = Math.min(...pricing.styles.map((s) => videoPrice(pricing, "monthly", s, s.durations[0], "XAF")));
+  const fromBy = Object.fromEntries(await Promise.all(pricing.styles.map(async (s) => [s.id, (await quote(s.id, s.durations[0], "9:16", "XAF", pricing))?.price ?? 0] as const)));
+  const from = Math.min(...Object.values(fromBy).filter(Boolean));
   return (
     <div className="overflow-x-hidden">
       {/* Hero */}
@@ -67,13 +69,13 @@ export default async function Home() {
       {/* Comment ça marche */}
       <section className="mx-auto max-w-6xl px-4 py-20">
         <p className="text-center text-sm font-bold uppercase tracking-widest text-brand">Comment ça marche</p>
-        <h2 className="mt-2 text-center text-3xl font-extrabold sm:text-4xl">Comme parler à un réalisateur, sur WhatsApp</h2>
+        <h2 className="mt-2 text-center text-3xl font-extrabold sm:text-4xl">Une photo, une phrase, ta vidéo</h2>
         <div className="mt-12 grid items-center gap-10 lg:grid-cols-2">
           <ol className="space-y-6">
             {[
-              ["Parle de ton produit", "Awa te pose quelques questions dans le chat. Envoie aussi tes photos : elle crée la fiche de ton produit."],
-              ["Choisis ton créateur et le lieu", "16 créateurs africains, écoute leur présentation. Puis choisis où tourner : boutique, marché, salon…"],
-              ["Valide le script et crée", "8, 15 ou 30 secondes. Choisis le style, le prix s'affiche avant de payer."],
+              ["Ajoute la photo de ton produit", "Une photo nette suffit : c'est elle qui garantit que la vidéo montre ton vrai produit."],
+              ["Décris la vidéo", "Qui la présente, où, et ce qu'elle dit : « une jeune femme à Douala montre la perruque… »."],
+              ["Choisis modèle, durée et format", "De 5 à 30 secondes, vertical, paysage ou carré. Le prix s'affiche avant de lancer, puis la vidéo se crée en direct."],
             ].map(([t, d], i) => (
               <li key={t} className="flex gap-4">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand text-lg font-bold text-white">{i + 1}</span>
@@ -118,7 +120,7 @@ export default async function Home() {
 
       {/* Styles */}
       <section className="mx-auto max-w-6xl px-4 py-20">
-        <h2 className="text-center text-3xl font-extrabold sm:text-4xl">4 styles, selon ton budget</h2>
+        <h2 className="text-center text-3xl font-extrabold sm:text-4xl">4 modèles, selon ton budget</h2>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {pricing.styles.map((s, i) => (
             <div key={s.id} className={`card flex flex-col ${i === 1 ? "!border-brand" : ""}`}>
@@ -126,8 +128,8 @@ export default async function Home() {
               <h3 className="mt-2 text-lg font-bold">{s.name_fr}</h3>
               <p className="mt-1 flex-1 text-sm text-muted">{s.description_fr}</p>
               <p className="mt-4 text-xs text-muted">dès</p>
-              <p className="text-2xl font-extrabold">{fmt(videoPrice(pricing, "monthly", s, s.durations[0], "XAF"), "XAF")}</p>
-              <p className="text-xs text-muted">par pub de {s.durations.join(" ou ")} s</p>
+              <p className="text-2xl font-extrabold">{fmt(fromBy[s.id], "XAF")}</p>
+              <p className="text-xs text-muted">la vidéo de {s.durations[0]} s · jusqu&apos;à {s.durations[s.durations.length - 1]} s</p>
             </div>
           ))}
         </div>
@@ -143,7 +145,7 @@ export default async function Home() {
             ["Prix d'une vidéo", "50 000 – 200 000 FCFA", `dès ${fmt(from, "XAF")}`],
             ["Délai", "1 à 2 semaines", "Quelques minutes"],
             ["Acteur, matériel, lieu", "À trouver et payer", "Inclus"],
-            ["Changer le message", "Tout refaire", "Une phrase à Awa"],
+            ["Changer le message", "Tout refaire", "Une phrase à changer"],
           ].map((r, i) => (
             <div key={i} className={`grid grid-cols-3 gap-2 px-4 py-3 ${i === 0 ? "bg-bg font-bold" : "border-t border-line"}`}>
               <p className="font-semibold">{r[0]}</p><p className="text-muted">{r[1]}</p><p className="font-semibold text-accent">{r[2]}</p>

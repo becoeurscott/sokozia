@@ -279,3 +279,19 @@ Elle illustre le premier plan de la pub : ${first ? `[${first.time} · ${first.c
 Expression naturelle, lumière du lieu, aucun texte à l'écran.
 JSON : {"prompt": "le prompt en anglais"}`);
 }
+
+// Générateur direct : transforme la demande du client (photo produit + texte) en prompt vidéo anglais pour le modèle.
+export async function renderPrompt(userPrompt: string, duration: number, aspect: string) {
+  const fallback = `Authentic UGC-style vertical ad filmed on a phone. The exact product from the reference image is the hero: keep its shape, colors, label and logo identical. ${userPrompt}. Natural light, real African setting, handheld camera, smooth motion, ${duration} seconds, ${aspect}.`;
+  try {
+    const r = await Promise.race([
+      askJSON<{ prompt: string }>(`Tu écris le prompt d'une vidéo pub générée par IA à partir de la PHOTO DU PRODUIT (image de départ) et de la demande du client.
+DEMANDE DU CLIENT : ${userPrompt}
+DURÉE : ${duration} s · FORMAT : ${aspect}
+Règles : prompt en anglais, 60 à 120 mots, une seule scène continue. Le produit de la photo reste strictement identique (forme, couleurs, étiquette, logo). Style UGC authentique filmé au téléphone, cadre et personnes africains si des personnes apparaissent. Si le client veut une voix ou un texte parlé, écris la réplique entre guillemets dans la langue demandée (français par défaut). Pas de texte incrusté à l'écran. Décris mouvement de caméra, lumière, action.
+Réponds en JSON : {"prompt": "..."}`),
+      new Promise<never>((_, no) => setTimeout(() => no(new Error("timeout")), 20000)),
+    ]);
+    return r?.prompt?.trim() || fallback;
+  } catch { return fallback; }
+}

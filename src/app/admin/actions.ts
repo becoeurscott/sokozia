@@ -175,3 +175,21 @@ export async function deleteUser(userId: string, reason: string): Promise<Action
     return done("Compte supprimé.");
   } catch (e) { return fail(e); }
 }
+
+/** Ajoute (ou retire, montant négatif) du solde au portefeuille d'un client, avec une raison. */
+export async function adjustWallet(userId: string, amount: number, reason: string): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin();
+    const n = Math.trunc(Number(amount));
+    if (!n || Math.abs(n) > 1000000) throw new AdminError("Montant invalide.", "INVALID");
+    const why = reason.trim().slice(0, 200);
+    if (why.length < 3) throw new AdminError("Indique une raison (3 caractères minimum).", "INVALID");
+    const { data: prof } = await db().from("profiles").select("country").eq("id", userId).limit(1);
+    const { currencyOf } = await import("@/lib/pricing");
+    const { walletApply } = await import("@/lib/wallet");
+    const left = await walletApply(userId, n, n > 0 ? "gift" : "adjust", n > 0 ? `Offert par Sokozia · ${why}` : `Ajustement · ${why}`, null, currencyOf(prof?.[0]?.country ?? "CI"));
+    if (left === null) throw new AdminError("Le solde ne peut pas devenir négatif.", "INVALID");
+    await audit(admin, { action: "wallet.adjust", targetType: "user", targetId: userId, after: { amount: n, balance: left }, reason: why });
+    return done(`Solde mis à jour : ${left.toLocaleString("fr-FR")}.`);
+  } catch (e) { return fail(e); }
+}

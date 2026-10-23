@@ -20,6 +20,7 @@
   --color-card: var(--card);
   --color-line: var(--line);
   --font-sans: var(--font-jakarta);
+  --font-serif: var(--font-instrument), Georgia, serif;
 }
 
 body { background: var(--bg); color: var(--ink); }

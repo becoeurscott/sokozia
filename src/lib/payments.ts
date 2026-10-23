@@ -3,6 +3,7 @@ import { depositStatus } from "./pawapay";
 import { checkoutStatus } from "./stripe";
 import { consumePass } from "./passes";
 import { startGeneration } from "./generation";
+import { walletApply } from "./wallet";
 
 // Idempotent : un paiement confirmé crée UN pass (pending -> completed une seule fois).
 // Pour « 1 pub » lancée depuis le studio, la pub est créée automatiquement juste après.
@@ -33,6 +34,11 @@ export async function settlePayment(paymentId: string) {
     .update({ status: "completed", correspondent: d.provider, raw: d.raw, updated_at: new Date().toISOString() })
     .eq("id", paymentId).eq("status", "pending").select("id");
   if (!claimed?.length) return "completed";
+
+  if (p.plan === "topup") {
+    await walletApply(p.user_id, Number(p.amount), "topup", p.method === "card" ? "Recharge par carte" : "Recharge Mobile Money", paymentId, p.currency);
+    return "completed";
+  }
 
   const total = p.plan === "single" ? 1 : p.plan === "pack5" ? 5 : Number(p.videos ?? 10);
   await db.from("video_passes").insert([{

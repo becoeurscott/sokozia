@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Instrument_Serif, Plus_Jakarta_Sans } from "next/font/google";
 import { getSession } from "@/lib/insforge";
 import { signOut } from "./actions";
 import NavMenu from "@/components/NavMenu";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"] });
+const serif = Instrument_Serif({ variable: "--font-instrument", subsets: ["latin"], weight: "400" });
 
 // interactive-widget : sur Android, le clavier réduit la page au lieu de la recouvrir.
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content", themeColor: "#fffaf3" };
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const { profile } = await getSession();
   return (
-    <html lang="fr" className={`${jakarta.variable} h-full antialiased`}>
+    <html lang="fr" className={`${jakarta.variable} ${serif.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <header className="sticky top-0 z-50 border-b border-line bg-bg/95 backdrop-blur">
           <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4">
@@ -32,6 +33,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   { href: "/tableau-de-bord", label: "Tableau de bord" },
                   { href: "/studio", label: "Studio" },
                   { href: "/mes-videos", label: "Mes vidéos" },
+                  { href: "/portefeuille", label: "Portefeuille" },
                   { href: "/tarifs", label: "Tarifs" },
                   { href: "/compte", label: "Mon compte" },
                 ]}

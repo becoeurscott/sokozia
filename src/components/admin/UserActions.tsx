@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { createUser, deleteUser, giftAds, setAdmin, updateUser } from "@/app/admin/actions";
+import { adjustWallet, createUser, deleteUser, setAdmin, updateUser } from "@/app/admin/actions";
 
 const input = "h-10 w-full rounded-xl border border-white/[0.08] bg-[#0b0b0b] px-3 text-[13px] text-white outline-none placeholder:text-white/40 focus:border-white/25";
 
@@ -27,18 +27,15 @@ export function UserActions({ userId, isAdmin, styles, who, countries }: { userI
   };
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [styleId, setStyleId] = useState(styles[0]?.id ?? "");
-  const style = styles.find((s) => s.id === styleId);
-  const [duration, setDuration] = useState(style?.durations[0] ?? 15);
-  const [count, setCount] = useState("1");
+  const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
-  const valid = Number(count) >= 1 && reason.trim().length >= 3;
+  const valid = Number(amount) !== 0 && reason.trim().length >= 3;
 
   const gift = () => start(async () => {
-    const r = await giftAds(userId, styleId, duration, Number(count), reason);
+    const r = await adjustWallet(userId, Number(amount), reason);
     setNotice(r.ok ? { ok: true, text: r.message ?? "Fait." } : { ok: false, text: r.error ?? "Échec." });
-    if (r.ok) { setReason(""); router.refresh(); }
+    if (r.ok) { setReason(""); setAmount(""); router.refresh(); }
   });
   const toggleAdmin = () => {
     if (!confirm(isAdmin ? "Retirer les droits admin de ce compte ?" : "Donner les droits admin à ce compte ? Il pourra tout voir et tout modifier.")) return;
@@ -52,18 +49,10 @@ export function UserActions({ userId, isAdmin, styles, who, countries }: { userI
   return (
     <div className="space-y-5">
       <div>
-        <p className="mb-2 text-[12px] font-medium text-white/70">Offrir des pubs (geste commercial, test, compensation)</p>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <select className={input} value={styleId} onChange={(e) => { setStyleId(e.target.value); setDuration(styles.find((s) => s.id === e.target.value)?.durations[0] ?? 15); }} aria-label="Style">
-            {styles.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          <select className={input} value={duration} onChange={(e) => setDuration(Number(e.target.value))} aria-label="Durée">
-            {(style?.durations ?? []).map((d) => <option key={d} value={d}>{d} s</option>)}
-          </select>
-          <input className={input} inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value.replace(/\D/g, ""))} placeholder="Nombre" aria-label="Nombre de pubs" />
-        </div>
+        <p className="mb-2 text-[12px] font-medium text-white/70">Ajouter du solde (geste commercial, test, compensation) · montant négatif pour retirer</p>
+        <input className={input} inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d-]/g, ""))} placeholder="Montant en FCFA (ex : 5000)" aria-label="Montant" />
         <input className={`${input} mt-2`} placeholder="Raison (gardée dans le journal)" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} />
-        <button type="button" disabled={!valid || pending} onClick={gift} className="mt-2 h-9 w-full rounded-xl bg-emerald-400 text-[13px] font-medium text-black disabled:opacity-40">+ Offrir {count || 0} pub(s)</button>
+        <button type="button" disabled={!valid || pending} onClick={gift} className="mt-2 h-9 w-full rounded-xl bg-emerald-400 text-[13px] font-medium text-black disabled:opacity-40">{Number(amount) < 0 ? "Retirer" : "+ Ajouter"} {amount ? Number(amount).toLocaleString("fr-FR") : 0} FCFA</button>
       </div>
       <div>
         <p className="mb-2 text-[12px] font-medium text-white/70">Modifier le profil</p>

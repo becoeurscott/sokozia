@@ -23,6 +23,7 @@ export async function hfSubmit(endpoint: string, input: Record<string, unknown>)
 export async function hfStatus(requestId: string) {
   const res = await fetch(`${API}/requests/${encodeURIComponent(requestId)}/status`, { headers: auth(), cache: "no-store" });
   const json = (await res.json().catch(() => ({}))) as Raw;
+  if (res.status === 404) return { status: "failed", url: null, error: "Requête inconnue chez Higgsfield." } as const;
   const s = String(json.status ?? "");
   const url = json.video?.url ?? json.images?.[0]?.url ?? null;
   return {

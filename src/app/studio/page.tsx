@@ -1,38 +1,30 @@
 import { redirect } from "next/navigation";
 import { adminClient, getSession } from "@/lib/insforge";
-import { currencyOf, fmt, loadPricing, planPrice } from "@/lib/pricing";
-import { activePasses } from "@/lib/passes";
-import Studio from "@/components/Studio";
+import { currencyOf, loadPricing } from "@/lib/pricing";
+import { getWallet } from "@/lib/wallet";
+import RenderStudio, { type ModelCard, type Recent } from "@/components/render/RenderStudio";
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ projet?: string }> }) {
-  const { projet } = await searchParams;
+export const metadata = { title: "Studio — Sokozia" };
+const ETA: Record<string, number> = { eclair: 100, naturel: 160, studio: 200, signature: 260 };
+
+export default async function Page() {
   const { profile } = await getSession();
   if (!profile) redirect("/connexion?next=/studio");
-  const [pricing, passes, { data: convs }] = await Promise.all([
+  const [pricing, wallet, { data: vids }] = await Promise.all([
     loadPricing(),
-    activePasses(profile.id),
-    adminClient().database.from("conversations").select("id, title, created_at")
-      .eq("user_id", profile.id).order("created_at", { ascending: false }).limit(40),
+    getWallet(profile.id),
+    adminClient().database.from("videos").select("id, status, video_url, image_url, aspect_ratio, prompt, created_at")
+      .eq("created_by", profile.id).order("created_at", { ascending: false }).limit(12),
   ]);
   const currency = currencyOf(profile.country);
-  const left = (styleId: string, d: number) =>
-    passes.filter((p) => p.style_id === styleId && p.duration_s === d).reduce((n, p) => n + p.remaining, 0);
-  const styles = pricing.styles.map((s) => ({
-    id: s.id, name: s.name_fr, description: s.description_fr, quality: s.quality_fr, durations: s.durations,
-    sample: s.sample_clip ? { poster: `/showcase/ugc/${s.sample_clip}.jpg`, clip: `/showcase/ugc/${s.sample_clip}.mp4` } : null,
-    options: Object.fromEntries(s.durations.map((d) => [d, {
-      price: fmt(planPrice(pricing, "single", s, d, currency), currency),
-      remaining: left(s.id, d),
-    }])),
+  const models: ModelCard[] = pricing.styles.map((s) => ({
+    id: s.id, name: s.name_fr, quality: s.quality_fr, description: s.description_fr, durations: s.durations,
+    aspects: s.aspect_ratios, eta: ETA[s.id] ?? 180, sample: s.sample_clip,
   }));
-  const packs = pricing.styles.flatMap((s) => s.durations.map((d) => ({ label: `${s.name_fr} · ${d} s`, remaining: left(s.id, d) })))
-    .filter((p) => p.remaining > 0);
+  const recent: Recent[] = ((vids ?? []) as { id: string; status: string; video_url: string | null; image_url: string | null; aspect_ratio: string | null; prompt: string | null; created_at: string }[])
+    .map((v) => ({ id: v.id, status: v.status, url: v.video_url, image: v.image_url?.startsWith("http") ? v.image_url : null, aspect: v.aspect_ratio ?? "9:16", prompt: v.prompt ?? "", created_at: v.created_at }));
   return (
-    <Studio
-      conversations={(convs ?? []) as { id: string; title: string; created_at: string }[]}
-      styles={styles} packs={packs} isAdmin={profile.is_admin}
-      firstName={profile.full_name.split(" ")[0]}
-      initialProjectId={projet}
-    />
+    <RenderStudio models={models} balance={wallet.balance} currency={currency === "XOF" || currency === "XAF" ? "FCFA" : currency}
+      isAdmin={profile.is_admin} name={profile.full_name} recent={recent} />
   );
 }

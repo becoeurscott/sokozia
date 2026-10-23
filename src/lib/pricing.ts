@@ -19,21 +19,22 @@ export const PLAN_LABELS: Record<Plan, string> = {
   monthly: "Abonnement mensuel",
 };
 
-export type PricedStyle = { id: string; name_fr: string; description_fr: string; durations: number[]; cost_usd_per_s: number; sample_clip: string | null; quality_fr: string };
+export type PricedStyle = { id: string; name_fr: string; description_fr: string; durations: number[]; cost_usd_per_s: number; sample_clip: string | null; quality_fr: string; aspect_ratios: string[]; hf_endpoint: string | null; hf_params: Record<string, unknown> | null };
 
 // Lecture serveur uniquement (le coût réel n'est jamais envoyé tel quel au navigateur).
 export async function loadPricing() {
   const db = adminClient().database;
   const [{ data: settings }, { data: styles }] = await Promise.all([
     db.from("settings").select("key, value"),
-    db.from("styles").select("id, name_fr, description_fr, durations, cost_usd_per_s, sample_clip, quality_fr, sort").eq("active", true).order("sort"),
+    db.from("styles").select("id, name_fr, description_fr, durations, cost_usd_per_s, sample_clip, quality_fr, sort, aspect_ratios, hf_endpoint, hf_params").eq("active", true).order("sort"),
   ]);
   const s = Object.fromEntries((settings ?? []).map((r: { key: string; value: unknown }) => [r.key, r.value]));
   const parsed: PricedStyle[] = (styles ?? []).map((st: PricedStyle) => ({
-    ...st, cost_usd_per_s: Number(st.cost_usd_per_s), durations: (st.durations ?? []).map(Number),
+    ...st, cost_usd_per_s: Number(st.cost_usd_per_s), durations: (st.durations ?? []).map(Number), aspect_ratios: st.aspect_ratios ?? ["9:16", "16:9", "1:1"],
   }));
   return {
     multipliers: s.multipliers as Record<Plan, number>,
+    margin: Number(s.margin ?? 1.4),
     monthlyVideos: Number(s.monthly_videos),
     fx: s.fx as Record<string, number>,
     styles: parsed,

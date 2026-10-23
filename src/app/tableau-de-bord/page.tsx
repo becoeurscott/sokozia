@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { Clapperboard, Globe2, ImageIcon, Languages, RotateCcw, Smartphone, Sparkles, Users } from "lucide-react";
 import { adminClient, getSession } from "@/lib/insforge";
-import { activePasses } from "@/lib/passes";
+import { getWallet } from "@/lib/wallet";
+import { currencyOf } from "@/lib/pricing";
+import { TopupButton } from "@/components/render/TopupButton";
 import { CREATORS, creatorFiles } from "@/content/creators";
-import ProjectList from "@/components/ProjectList";
 
 export const metadata = { title: "Tableau de bord — Sokozia" };
 
@@ -26,19 +27,18 @@ export default async function Page() {
   // Nouveau compte sans aucun achat : onboarding (formule + paiement) avant le tableau de bord.
   if (!profile.is_admin && !(await cookies()).get("sz_onboarded")) {
     const [{ data: anyPass }, { data: anyPay }] = await Promise.all([
-      db.from("video_passes").select("id").eq("user_id", profile.id).limit(1),
+      db.from("wallet_tx").select("id").eq("user_id", profile.id).limit(1),
       db.from("payments").select("id").eq("user_id", profile.id).limit(1),
     ]);
     if (!anyPass?.length && !anyPay?.length) redirect("/bienvenue");
   }
-  const [{ data: convs }, { data: videos }, passes, { data: styles }] = await Promise.all([
+  const [{ data: convs }, { data: videos }, wallet] = await Promise.all([
     db.from("conversations").select("id, title, step, created_at").eq("user_id", profile.id).order("created_at", { ascending: false }).limit(30),
-    db.from("videos").select("id, status, video_url, created_at").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(6),
-    activePasses(profile.id),
-    db.from("styles").select("id, name_fr"),
+    db.from("videos").select("id, status, video_url, created_at").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(12),
+    getWallet(profile.id),
   ]);
-  const styleName = Object.fromEntries((styles ?? []).map((s: { id: string; name_fr: string }) => [s.id, s.name_fr]));
-  const left = passes.reduce((n, p) => n + p.remaining, 0);
+  const c = currencyOf(profile.country);
+  const cur = c === "XOF" || c === "XAF" ? "FCFA" : c;
   const ready = (videos ?? []).filter((v) => v.status === "ready");
   const first = profile.full_name.split(" ")[0];
 
@@ -52,7 +52,7 @@ export default async function Page() {
           <div>
             <p className="text-sm font-semibold text-white/60">Tableau de bord</p>
             <h1 className="mt-2 text-3xl font-extrabold leading-tight sm:text-5xl">Bonjour{first ? ` ${first}` : ""}, on crée ta prochaine pub ?</h1>
-            <p className="mt-3 max-w-lg text-white/70">Parle de ton produit à Awa, choisis ton créateur et ton lieu : ta vidéo est prête en quelques minutes.</p>
+            <p className="mt-3 max-w-lg text-white/70">Ajoute la photo de ton produit, décris la vidéo, choisis le modèle et la durée : ta pub est prête en quelques minutes.</p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/studio" className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3.5 text-lg font-bold text-white shadow-lg hover:brightness-110">
                 <Sparkles size={18} /> Créer une pub
@@ -71,39 +71,25 @@ export default async function Page() {
           </div>
         </div>
         <div className="relative mt-8 grid grid-cols-3 gap-3 border-t border-white/10 pt-6 text-center sm:max-w-md">
-          <div><p className="text-2xl font-extrabold">{convs?.length ?? 0}</p><p className="text-xs text-white/60">projets</p></div>
+          <div><p className="text-2xl font-extrabold">{videos?.length ?? 0}</p><p className="text-xs text-white/60">vidéos</p></div>
           <div><p className="text-2xl font-extrabold">{ready.length}</p><p className="text-xs text-white/60">pubs prêtes</p></div>
-          <div><p className="text-2xl font-extrabold">{left}</p><p className="text-xs text-white/60">pubs restantes</p></div>
+          <div><p className="text-2xl font-extrabold">{wallet.balance.toLocaleString("fr-FR")}</p><p className="text-xs text-white/60">{cur} de solde</p></div>
         </div>
       </section>
 
       <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
-        {/* Projets */}
+        {/* Portefeuille */}
         <section className="rounded-3xl border border-line bg-card p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold">Mes projets</h2>
-            <Link href="/studio" className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white">+ Nouveau</Link>
+          <h2 className="text-lg font-bold">Mon solde</h2>
+          <p className="mt-2 text-4xl font-extrabold">{wallet.balance.toLocaleString("fr-FR")} <span className="text-lg text-muted">{cur}</span></p>
+          <p className="mt-2 text-sm text-muted">Chaque vidéo est débitée selon le modèle et sa durée. Pas d&apos;abonnement, le solde n&apos;expire pas.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <TopupButton currency={cur} />
+            <Link href="/portefeuille" className="btn-ghost">Historique</Link>
           </div>
-          <ProjectList initial={(convs ?? []) as { id: string; title: string; step: string; created_at: string }[]} />
         </section>
 
         <div className="space-y-8">
-          {/* Packs */}
-          <section className="rounded-3xl border border-line bg-card p-5">
-            <h2 className="text-lg font-bold">Mes pubs restantes</h2>
-            {passes.length ? (
-              <ul className="mt-3 space-y-2 text-sm">
-                {passes.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between rounded-xl bg-bg px-3 py-2">
-                    <span>{styleName[p.style_id] ?? p.style_id} · {p.duration_s} s{p.expires_at && <span className="text-xs text-muted"> · jusqu&apos;au {new Date(p.expires_at).toLocaleDateString("fr-FR")}</span>}</span>
-                    <b>{p.remaining}/{p.total}</b>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="mt-2 text-sm text-muted">Aucun pack pour l&apos;instant. Tu peux payer pub par pub dans le studio, ou économiser avec un pack.</p>}
-            <Link href="/tarifs" className="mt-4 block rounded-full border border-line py-2.5 text-center text-sm font-semibold hover:border-brand">Voir les packs</Link>
-          </section>
-
           {/* Dernières vidéos */}
           <section className="rounded-3xl border border-line bg-card p-5">
             <div className="flex items-center justify-between">
