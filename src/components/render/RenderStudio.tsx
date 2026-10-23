@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Clapperboard, Download, Home, ImagePlus, Loader2, Menu, Plus, RotateCcw, Tag, Wallet, X } from "lucide-react";
+import { ArrowUp, Clapperboard, Clock, Download, Home, ImagePlus, Loader2, Menu, Plus, RectangleVertical, RotateCcw, Sparkles, Tag, Wallet, X } from "lucide-react";
+import { Pick } from "./Pick";
 import { TopupSheet } from "./Topup";
 import { RenderLoading } from "./RenderLoading";
 
 export type ModelCard = { id: string; name: string; quality: string; description: string; durations: number[]; aspects: string[]; eta: number; sample: string | null };
 export type Recent = { id: string; status: string; url: string | null; image: string | null; aspect: string; prompt: string; created_at: string };
 
-const ASPECTS: Record<string, string> = { "9:16": "Vertical", "16:9": "Paysage", "1:1": "Carré" };
+const ASPECTS: Record<string, string> = { "9:16": "Vertical · TikTok, Reels, WhatsApp", "16:9": "Paysage · YouTube, Facebook", "1:1": "Carré · Instagram, Facebook" };
 const nf = (n: number) => n.toLocaleString("fr-FR");
 
 async function shrink(file: File): Promise<Blob> {
@@ -111,7 +112,6 @@ export default function RenderStudio({ models, balance: initialBalance, currency
   useEffect(() => { if (!job) return; const t = setInterval(poll, 5000); return () => clearInterval(t); }, [job, poll]);
 
   const reset = () => { setDone(null); setJob(null); setPrompt(""); setImage(null); setError(undefined); };
-  const chip = (on: boolean) => `rounded-full border px-3.5 py-2 text-sm font-semibold transition ${on ? "border-ink bg-ink text-white" : "border-line bg-card text-ink/80 hover:border-ink/40"}`;
   const balanceLabel = useMemo(() => `${nf(balance)} ${currency}`, [balance, currency]);
 
   const side = (
@@ -157,7 +157,7 @@ export default function RenderStudio({ models, balance: initialBalance, currency
           <button onClick={() => setTopup({})} className="flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-1.5 text-sm font-semibold"><Wallet size={14} /> {isAdmin ? "Admin" : balanceLabel}</button>
         </header>
 
-        <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-8 sm:pt-14">
+        <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-10 sm:pt-[18vh]">
           {job ? (
             <RenderLoading image={job.image} aspect={job.aspect} etaSec={job.eta} startedAt={job.startedAt} />
           ) : done ? (
@@ -171,68 +171,47 @@ export default function RenderStudio({ models, balance: initialBalance, currency
           ) : (
             <>
               <h1 className="text-center font-serif text-3xl tracking-tight sm:text-4xl">Pour quel produit on fait une pub ?</h1>
-              <p className="mt-2 text-center text-sm text-muted">Photo du produit, ta demande, le modèle, la durée et le format. Tu vois le prix avant de lancer.</p>
 
-              <div className="mt-6 rounded-[22px] border border-line bg-card p-4 shadow-[0_10px_40px_-18px_rgba(29,26,22,.25)] focus-within:border-brand/50"
+              <div className="mt-8 rounded-[22px] border border-line bg-card px-4 pb-3 pt-4 shadow-[0_10px_40px_-18px_rgba(29,26,22,.25)] transition focus-within:border-brand/50"
                 onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files); }}>
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => file.current?.click()} className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-2xl border-2 border-dashed border-line bg-bg text-muted hover:border-brand sm:size-28" aria-label="Ajouter la photo du produit">
-                    {image ? (<>
+                {image && (
+                  <div className="mb-2 flex">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-line bg-bg py-1 pl-1 pr-2 text-xs font-medium">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={image} alt="Produit" className="absolute inset-0 h-full w-full object-cover" />
-                      <span onClick={(e) => { e.stopPropagation(); setImage(null); }} className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white"><X size={12} /></span>
-                    </>) : uploading ? <Loader2 className="animate-spin" /> : (
-                      <span className="flex flex-col items-center gap-1 text-xs font-semibold"><ImagePlus size={22} /> Photo produit</span>
-                    )}
-                  </button>
-                  <input ref={file} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files)} />
-                  <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={4} maxLength={1500}
-                    placeholder="Ex : une jeune femme à Abidjan montre ce sérum, l'applique et dit « Ma peau n'a jamais été aussi douce ». Lumière naturelle, ambiance joyeuse."
-                    className="min-h-24 w-full resize-none bg-transparent text-[16px] leading-6 outline-none placeholder:text-muted/70" />
-                </div>
-
-                <div className="mt-4 space-y-4 border-t border-line pt-4">
-                  <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Modèle</p>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {models.map((m) => (
-                        <button key={m.id} onClick={() => setModelId(m.id)} className={`rounded-2xl border p-3 text-left transition ${m.id === modelId ? "border-brand bg-brand/5 ring-1 ring-brand" : "border-line hover:border-ink/30"}`}>
-                          <b className="block text-sm">{m.name}</b>
-                          <span className="mt-0.5 block text-[11px] leading-4 text-muted">{m.quality}</span>
-                        </button>
-                      ))}
-                    </div>
+                      <img src={image} alt="Produit" className="h-7 w-7 rounded-full object-cover" />
+                      Photo du produit
+                      <button onClick={() => setImage(null)} className="text-muted hover:text-ink" aria-label="Retirer la photo"><X size={14} /></button>
+                    </span>
                   </div>
-                  <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Durée</p>
-                    <div className="flex flex-wrap gap-2">
-                      {model?.durations.map((d) => (
-                        <button key={d} onClick={() => setDuration(d)} className={chip(d === duration)}>
-                          {d} s {prices[d] ? <span className={`ml-1 font-normal ${d === duration ? "text-white/70" : "text-muted"}`}>· {nf(prices[d])}</span> : null}
-                        </button>
-                      ))}
-                    </div>
+                )}
+                <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2} maxLength={1500}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); } }}
+                  placeholder="Décris ta vidéo : qui présente le produit, où, et ce qu'il dit"
+                  className="block min-h-12 w-full resize-none bg-transparent text-[16px] leading-6 outline-none placeholder:text-muted/70" />
+                <input ref={file} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files)} />
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="-ml-1 flex min-w-0 flex-wrap items-center gap-0.5">
+                    <button type="button" onClick={() => file.current?.click()} title="Ajouter la photo du produit" aria-label="Ajouter la photo du produit"
+                      className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium hover:bg-[#f6ebdc] ${image ? "text-ink/75" : "text-brand"}`}>
+                      {uploading ? <Loader2 size={18} className="animate-spin" /> : <ImagePlus size={18} />}<span className="hidden sm:inline">{image ? "Changer" : "Photo produit"}</span>
+                    </button>
+                    <Pick title="Modèle" icon={<Sparkles size={16} />} value={modelId} onChange={setModelId}
+                      options={models.map((m) => ({ value: m.id, label: m.name, hint: m.quality }))} />
+                    <Pick title="Durée" icon={<Clock size={16} />} value={String(duration)} onChange={(v) => setDuration(Number(v))}
+                      options={(model?.durations ?? []).map((d) => ({ value: String(d), label: `${d} s`, hint: prices[d] ? `${nf(prices[d])} ${currency}` : undefined }))} />
+                    <Pick title="Format" icon={<RectangleVertical size={16} />} value={aspect} onChange={setAspect}
+                      options={(model?.aspects ?? []).map((a) => ({ value: a, label: a, hint: ASPECTS[a] }))} />
                   </div>
-                  <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Format</p>
-                    <div className="flex flex-wrap gap-2">
-                      {model?.aspects.map((a) => <button key={a} onClick={() => setAspect(a)} className={chip(a === aspect)}>{ASPECTS[a] ?? a} <span className="font-normal opacity-70">{a}</span></button>)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-col gap-3 rounded-2xl bg-bg p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-sm">
-                    <p className="font-semibold">Coût : {price ? `${nf(price)} ${currency}` : "…"} <span className="font-normal text-muted">· {model?.name} · {duration} s · {aspect}</span></p>
-                    <p className="text-muted">{isAdmin ? "Admin : génération gratuite" : `Solde : ${balanceLabel}${missing > 0 ? ` · il manque ${nf(missing)} ${currency}` : ""}`}</p>
-                  </div>
-                  <button onClick={generate} disabled={!ready} className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-brand px-5 font-semibold text-white transition hover:brightness-110 disabled:bg-brand/40">
-                    {busy ? <Loader2 size={16} className="animate-spin" /> : null}
-                    {missing > 0 ? "Recharger et générer" : "Générer la vidéo"} <ArrowUp size={16} />
+                  <button onClick={generate} disabled={!ready} className="ml-auto flex h-10 shrink-0 items-center gap-2 rounded-full bg-brand pl-4 pr-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:bg-brand/40">
+                    {busy ? <Loader2 size={15} className="animate-spin" /> : null}
+                    {missing > 0 ? "Recharger" : "Générer"}{price ? ` · ${nf(price)}` : ""} <ArrowUp size={15} />
                   </button>
                 </div>
               </div>
-              {!image && <p className="mt-2 px-2 text-xs text-muted">La photo du produit est obligatoire : c&apos;est elle qui garantit que la vidéo montre ton vrai produit.</p>}
+              <p className="mt-3 text-center text-xs text-muted">
+                {!image ? "Ajoute la photo de ton produit : c'est elle qui garantit que la vidéo montre ton vrai produit."
+                  : isAdmin ? "Admin : génération gratuite" : `Solde : ${balanceLabel}${missing > 0 ? ` · il manque ${nf(missing)} ${currency}` : ""}`}
+              </p>
             </>
           )}
           {error && <p className="mx-auto mt-4 max-w-md rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-700">{error}</p>}
