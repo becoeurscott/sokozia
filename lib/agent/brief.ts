@@ -302,7 +302,7 @@ export function buildVideoPrompts(
     [
       `Vertical 9:16 UGC advert, ${MAX_CLIP_SECONDS} seconds, filmed on a phone, natural handheld feel.`,
       n > 1 ? `Part ${i + 1} of ${n} of the same ad: ${i === 0 ? "it opens with a strong hook." : "it continues the previous part seamlessly, same person, outfit, setting and light, and ends on the call to action."}` : null,
-      `The first reference image is the presenter: ${actor.look}. Keep this exact face and identity throughout.`,
+      `The first reference image is the presenter's character sheet: ${actor.look}. Keep this exact face, hair, outfit and identity throughout.`,
       `The second reference image is the product (${brief.product}); show it clearly in hand or on screen.`,
       `Setting: ${brief.scene}. Warm daylight, authentic African small-business atmosphere.`,
       brief.shots?.[i] ? `Shot: ${brief.shots[i]}` : null,

@@ -66,9 +66,12 @@ gateway InsForge, utilisé pour Awa seulement si `ANTHROPIC_API_KEY` est absente
 ## Mettre en place Higgsfield (vidéo)
 
 1. Crée une clé dans console.higgsfield.ai → `HF_API_KEY_ID`, `HF_API_KEY_SECRET`.
-2. Génère les portraits des créateurs une seule fois :
-   `npx tsx scripts/seed-actors.ts` (écrit `public/actors/<id>.jpg`).
-   Ces portraits sont la référence d'identité envoyée à chaque vidéo : garde-les.
+2. Les 16 créateurs sont dans `public/creators/<dossier>/` : `portrait.jpg`
+   (cartes), `intro.mp4` (présentation avec voix) et `sheet.jpg`, la fiche
+   personnage envoyée à Seedance comme référence d'identité à chaque vidéo.
+   Ne les régénère pas : changer une fiche change le visage du créateur.
+   En local (http), la fiche est lue sur le site en ligne pour que Higgsfield
+   puisse la télécharger (`actorSheetUrl` dans `lib/actors.ts`).
 3. `MOCK_PROVIDERS=0` et `NEXT_PUBLIC_APP_URL=https://sokozia.com`.
    Les webhooks arrivent sur `https://sokozia.com/api/webhooks/higgsfield`
    (passé en `?hf_webhook=` à chaque requête) ; le client sonde aussi
@@ -133,5 +136,5 @@ lib/providers/*      higgsfield.ts, pawapay.ts, mock.ts
 lib/services/*       generations, orders
 lib/db/*             InsForge ou store JSON local
 insforge/migrations  schéma SQL
-scripts/seed-actors  portraits des créateurs
+public/creators      16 créateurs : portrait, intro vidéo, fiche personnage
 ```

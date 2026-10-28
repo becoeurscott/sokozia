@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { actorColor, type Actor } from "@/lib/actors";
+import { actorColor, actorPortrait, type Actor } from "@/lib/actors";
 
-/** Portrait from /actors/<id>.jpg with an initials fallback until it exists. */
+/** Creator portrait, with an initials fallback if the file can't load. */
 export function ActorAvatar({ actor, size = 40, className = "", rounded = "rounded-full" }: { actor: Actor; size?: number; className?: string; rounded?: string }) {
   const [failed, setFailed] = React.useState(false);
   const ref = React.useRef<HTMLImageElement>(null);
@@ -25,6 +25,6 @@ export function ActorAvatar({ actor, size = 40, className = "", rounded = "round
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img ref={ref} src={`/actors/${actor.id}.jpg`} alt="" width={size} height={size} className={`${rounded} object-cover ${className}`} style={{ ...style, background: bg }} onError={() => setFailed(true)} />
+    <img ref={ref} src={actorPortrait(actor)} alt="" width={size} height={size} className={`${rounded} object-cover ${className}`} style={{ ...style, background: bg }} onError={() => setFailed(true)} />
   );
 }

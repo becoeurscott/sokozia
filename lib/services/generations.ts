@@ -1,6 +1,6 @@
 import "server-only";
 import { getDb, now } from "../db";
-import { getActor } from "../actors";
+import { actorSheetUrl, getActor } from "../actors";
 import { MAX_CLIP_SECONDS, clipCount, videoPrice, type Duration, type Style } from "../models";
 import type { BriefContent, Generation, GenerationPart, Message, Order } from "../types";
 import { videoProvider } from "../providers";
@@ -104,7 +104,7 @@ export async function submitGeneration(generation: Generation): Promise<Generati
   if (generation.provider_request_id) return generation;
   const actor = getActor(generation.actor_id)!;
   const provider = videoProvider();
-  const actorImageUrl = `${appUrl()}/actors/${actor.id}.jpg`;
+  const actorImageUrl = actorSheetUrl(actor, appUrl());
   const webhookUrl = provider.name === "higgsfield" ? `${appUrl()}/api/webhooks/higgsfield?g=${generation.id}` : null;
   const count = clipCount(generation.duration);
   // Prompts were written at creation (with Claude's shots); rebuild only for old rows.

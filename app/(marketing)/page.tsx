@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { ACTORS } from "@/lib/actors";
 import { formatFcfa, lowestPrice } from "@/lib/models";
 import { PriceTable } from "@/components/marketing/PriceTable";
-import { ActorAvatar } from "@/components/ui/ActorAvatar";
+import { CreatorCard } from "@/components/studio/ActorsPicker";
 
 export default function LandingPage() {
   return (
@@ -117,17 +117,10 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-4">
           <div className="text-xs font-semibold uppercase tracking-wider text-brand">Nos créateurs</div>
           <h2 className="mt-2 text-3xl font-extrabold md:text-4xl">16 visages africains pour présenter ton produit</h2>
-          <p className="mt-2 max-w-xl text-muted">Choisis la personne qui parle à tes clients. Son visage reste le même dans toutes tes pubs.</p>
+          <p className="mt-2 max-w-xl text-muted">Écoute-les se présenter, puis choisis la personne qui parle à tes clients. Son visage reste le même dans toutes tes pubs.</p>
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
             {ACTORS.map((a) => (
-              <div key={a.id} className="flex flex-col items-center rounded-2xl border border-line bg-bg p-3 text-center">
-                <ActorAvatar actor={a} size={64} />
-                <div className="mt-2 text-sm font-bold">{a.name}</div>
-                <div className="text-xs text-muted">
-                  {a.flag} {a.country}
-                </div>
-                <div className="text-xs text-muted">{a.niche}</div>
-              </div>
+              <CreatorCard key={a.id} actor={a} />
             ))}
           </div>
           <div className="mt-8 text-center">
