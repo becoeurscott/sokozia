@@ -133,6 +133,20 @@ export async function signUp(req: NextRequest, res: CookieJar, input: { email: s
   return { user: { id: row.id, email: row.email, name: row.name }, error: null };
 }
 
+/**
+ * Confirms the 6-digit code InsForge emails after sign-up (the sokozia
+ * project verifies emails by code) and opens the session.
+ */
+export async function verifyEmail(req: NextRequest, res: CookieJar, input: { email: string; code: string }): Promise<AuthResult> {
+  if (!isInsForgeConfigured()) return { user: null, error: "Aucune vérification n'est nécessaire en local." };
+  const { createAuthActions } = await import("@insforge/sdk/ssr");
+  const auth = createAuthActions({ requestCookies: req.cookies, responseCookies: res });
+  const { data, error } = await auth.verifyEmail({ email: input.email.trim().toLowerCase(), otp: input.code.trim() });
+  if (error) return { user: null, error: /invalid|expired|code|otp/i.test(error.message ?? "") ? "Code incorrect ou expiré." : friendly(error.message) };
+  const u = data?.user;
+  return { user: u ? { id: u.id, email: u.email, name: (u as { name?: string }).name ?? null } : null, error: null };
+}
+
 export async function signIn(req: NextRequest, res: CookieJar, input: { email: string; password: string }): Promise<AuthResult> {
   const email = input.email.trim().toLowerCase();
   if (isInsForgeConfigured()) {

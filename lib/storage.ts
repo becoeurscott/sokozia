@@ -16,7 +16,8 @@ const LOCAL_ROOT = path.join(process.cwd(), ".data", "files");
 export async function putFile(bucket: Bucket, key: string, bytes: ArrayBuffer | Buffer, contentType: string): Promise<string> {
   if (isInsForgeConfigured()) {
     const { getAdminClient } = await import("./insforge/server");
-    const b = getAdminClient().storage.from(bucket);
+    // Prefixed like the tables: the project is shared with the earlier app.
+    const b = getAdminClient().storage.from(`${process.env.INSFORGE_BUCKET_PREFIX ?? "sz-"}${bucket}`);
     const blob = new Blob([bytes as BlobPart], { type: contentType });
     const { data, error } = await b.upload(key, blob as unknown as File);
     if (error || !data) throw new Error(`Upload échoué: ${error?.message ?? "inconnu"}`);

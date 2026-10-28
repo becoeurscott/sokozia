@@ -19,9 +19,16 @@ function fail(table: string, op: string, error: { message?: string } | null): ne
   throw new Error(`[db:${table}] ${op} failed: ${error?.message ?? "unknown error"}`);
 }
 
+/**
+ * The sokozia InsForge project also hosts the earlier app, which owns
+ * tables such as `profiles` and `messages`. Ours are prefixed so the two
+ * never touch each other's rows (see insforge/migrations).
+ */
+export const TABLE_PREFIX = process.env.INSFORGE_TABLE_PREFIX ?? "sz_";
+
 export function createInsForgeDb(): Db {
   const admin = getAdminClient();
-  const from = (table: string) => admin.database.from(table);
+  const from = (table: string) => admin.database.from(TABLE_PREFIX + table);
 
   return {
     async insert(table, row) {

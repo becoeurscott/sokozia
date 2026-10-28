@@ -21,6 +21,9 @@ export function AuthForm({
   const [error, setError] = React.useState<string | null>(null);
   const [info, setInfo] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  // Set once sign-up asks for the emailed code.
+  const [verifying, setVerifying] = React.useState(false);
+  const [code, setCode] = React.useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,10 +31,18 @@ export function AuthForm({
     setInfo(null);
     setBusy(true);
     try {
-      if (mode === "signup") {
+      if (verifying) {
+        const r = await api<{ user: User }>("/api/auth/verify", { method: "POST", json: { email, code } });
+        onSuccess(r.user);
+      } else if (mode === "signup") {
         const r = await api<{ user: User | null; needsVerification: boolean }>("/api/auth/signup", { method: "POST", json: { email, password, name } });
-        if (r.needsVerification || !r.user) {
-          setInfo("Compte créé ! Vérifie ta boîte mail puis connecte-toi.");
+        if (r.needsVerification) {
+          setVerifying(true);
+          setInfo(`Compte créé ! Entre le code envoyé à ${email}.`);
+          return;
+        }
+        if (!r.user) {
+          setInfo("Compte créé ! Connecte-toi.");
           onModeChange("login");
           return;
         }
@@ -48,6 +59,35 @@ export function AuthForm({
   }
 
   const field = "h-11 w-full rounded-xl border border-line bg-white px-3.5 text-[15px] outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20";
+
+  if (verifying) {
+    return (
+      <form onSubmit={submit} className="space-y-3">
+        {info && <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent">{info}</p>}
+        <input
+          className={`${field} text-center text-lg tracking-[0.4em]`}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          required
+          placeholder="123456"
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+          autoFocus
+        />
+        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        <Button type="submit" size="lg" className="w-full" disabled={busy || code.length < 4}>
+          {busy && <Spinner />}
+          Valider mon email
+        </Button>
+        <p className="text-center text-sm text-muted">
+          Pas reçu ? Regarde dans tes spams.{" "}
+          <button type="button" className="font-semibold text-brand hover:underline" onClick={() => { setVerifying(false); setInfo(null); setCode(""); }}>
+            Changer d&apos;email
+          </button>
+        </p>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={submit} className="space-y-3">

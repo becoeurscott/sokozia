@@ -29,20 +29,39 @@ rendu en ~10 s. Tout le parcours (inscription → brief → paiement → vidéo 
 bibliothèque) fonctionne ainsi. Écris « échec » dans le prompt pour tester une
 vidéo qui échoue et sa relance gratuite.
 
-## Mettre en place InsForge
+## InsForge (en place)
 
-1. Crée un projet sur insforge.dev, puis lie le CLI :
-   `npx @insforge/cli link --project-id <id>`
-2. Récupère les clés : `npx @insforge/cli secrets get ANON_KEY` et `API_KEY`.
-3. Renseigne dans `.env` : `NEXT_PUBLIC_INSFORGE_URL`, `NEXT_PUBLIC_INSFORGE_ANON_KEY`, `INSFORGE_API_KEY`.
-4. Applique le schéma `insforge/migrations/0001_init.sql` (CLI / MCP / éditeur SQL du dashboard).
-5. Crée deux buckets **publics** : `uploads` et `outputs`.
-6. Active l'auth email/mot de passe (et Google si tu veux) dans le dashboard.
-7. Optionnel : `INSFORGE_SCRIPT_MODEL`, le modèle Claude du gateway InsForge,
-   utilisé pour Awa seulement si `ANTHROPIC_API_KEY` est absente.
+Le projet InsForge **sokozia** (`h8fj6hqu`, eu-central) est **partagé** avec
+l'app précédente, qui y garde ses propres tables (`profiles`, `messages`,
+`videos`, `wallets`…). Pour ne jamais les toucher, toutes les tables de cette
+app sont préfixées `sz_` et ses buckets `sz-` :
 
-Dès que ces variables existent, l'app bascule automatiquement d'elle-même du
-store local vers InsForge (voir `lib/db/index.ts`, `lib/auth.ts`).
+- tables : `sz_threads`, `sz_messages`, `sz_generations`, `sz_orders`,
+  `sz_uploads`, `sz_webhook_events` (migration
+  `migrations/20261028141856_sz-studio-init.sql`, déjà appliquée) ;
+- buckets publics : `sz-uploads`, `sz-outputs` ;
+- le préfixe est ajouté dans `lib/db/insforge.ts` et `lib/storage.ts`
+  (`INSFORGE_TABLE_PREFIX`, `INSFORGE_BUCKET_PREFIX` pour changer).
+
+L'auth est commune aux deux apps : un compte créé ici fonctionne là-bas et
+inversement. L'inscription envoie un **code** par email (réglage du projet) ;
+le formulaire demande ce code puis connecte la personne.
+
+Mise en place sur une nouvelle machine :
+
+1. `npx -y @insforge/cli link --project-id 32123d64-d2dc-4255-9d8d-3130974f7004 --org-id 44e0f37f-c05d-46d2-a799-42532ebf19bf`
+2. Renseigne dans `.env` : `NEXT_PUBLIC_INSFORGE_URL`,
+   `NEXT_PUBLIC_INSFORGE_ANON_KEY` (`secrets get ANON_KEY`) et
+   `INSFORGE_API_KEY` (clé admin, côté serveur uniquement).
+3. Vérifie : `node --env-file=.env scripts/check-insforge.mjs` (écrit, lit et
+   supprime une ligne dans chaque table `sz_`, sans rien laisser).
+4. Nouvelle migration : `npx -y @insforge/cli db migrations new <nom>` puis
+   `db migrations up <fichier>` (toujours un fichier précis, jamais `--all`,
+   pour ne pas rejouer les migrations de l'autre app).
+
+`insforge/migrations/0001_init.sql` reste le schéma sans préfixe d'un projet
+InsForge dédié. Optionnel : `INSFORGE_SCRIPT_MODEL`, le modèle Claude du
+gateway InsForge, utilisé pour Awa seulement si `ANTHROPIC_API_KEY` est absente.
 
 ## Mettre en place Higgsfield (vidéo)
 
