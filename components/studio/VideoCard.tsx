@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Download, RefreshCw, Share2, AlertTriangle, CreditCard, Check } from "lucide-react";
 import type { Generation } from "@/lib/types";
-import { STYLES, formatFcfa } from "@/lib/models";
+import { MODEL, formatFcfa, isDuration } from "@/lib/models";
 import { getActor } from "@/lib/actors";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -49,7 +49,7 @@ export function VideoCard({
         <div className="min-w-0">
           <div className="truncate text-sm font-bold">{g.product}</div>
           <div className="text-xs text-muted">
-            {actor?.name} · {STYLES[g.style].name} · {g.duration} s · {formatFcfa(g.price)}
+            {actor?.name} · {g.duration} s · {formatFcfa(g.price)}
           </div>
         </div>
         {running && (
@@ -109,7 +109,7 @@ export function VideoCard({
                   </li>
                 ))}
               </ol>
-              <p className="mt-3 text-xs text-muted">Temps estimé : {STYLES[g.style].eta}. Tu peux fermer la page, la vidéo t&apos;attendra dans la Bibliothèque.</p>
+              <p className="mt-3 text-xs text-muted">Temps estimé : {isDuration(g.duration) ? MODEL.eta[g.duration] : "2 à 4 min"}. Tu peux fermer la page, la vidéo t&apos;attendra dans la Bibliothèque.</p>
             </>
           )}
 

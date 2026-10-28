@@ -25,6 +25,8 @@ export interface BriefContent {
   style: Style;
   script: string;
   scene: string;
+  /** Claude's camera direction, one per 15 s clip (English, for Seedance). */
+  shots?: string[] | null;
   imageUrl?: string | null;
   /** Set once the user clicked "Créer la vidéo". */
   generationId?: string | null;
@@ -48,6 +50,15 @@ export type GenerationStatus =
   | "failed"
   | "nsfw";
 
+/** One Seedance clip. A 30 s ad is two 15 s parts joined at the end. */
+export interface GenerationPart {
+  request_id: string;
+  status_url: string | null;
+  status: "queued" | "in_progress" | "completed" | "failed" | "nsfw";
+  video_url: string | null;
+  error: string | null;
+}
+
 export interface Generation {
   id: string;
   user_id: string;
@@ -63,6 +74,8 @@ export interface Generation {
   provider: "mock" | "higgsfield";
   provider_request_id: string | null;
   provider_status_url: string | null;
+  /** Every clip of this video (one for 15 s, two for 30 s). */
+  parts: GenerationPart[] | null;
   status: GenerationStatus;
   video_url: string | null;
   poster_url: string | null;

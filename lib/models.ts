@@ -1,144 +1,75 @@
 /**
- * Single source of truth for the four Sokozia styles: per-video price by
- * duration, labels, and the Higgsfield model each one maps to.
+ * Single source of truth for the video model, its durations and prices.
  *
- * Pricing is pay-per-video: the user pays one video at a time by Mobile
- * Money. Prices mirror the live table on sokozia.com/tarifs.
+ * Sokozia renders every ad with Seedance 2.0 (Higgsfield). Claude is the ad
+ * director (script + scene, see lib/agent/brief.ts); Seedance films it.
+ *
+ * Seedance 2.0 renders at most 15 s per request, so a 30 s ad is two 15 s
+ * clips rendered in parallel and joined (lib/video/concat.ts).
+ *
+ * Pricing is pay-per-video: the user pays one video at a time by Mobile Money.
  */
-export type Style = "eclair" | "naturel" | "studio" | "signature";
-export type Duration = 5 | 10 | 15 | 20 | 30;
+export type Style = "seedance";
+export type Duration = 15 | 30;
 
-/** Every duration offered by at least one style. */
-export const DURATIONS: Duration[] = [5, 10, 15, 20, 30];
+export const DURATIONS: Duration[] = [15, 30];
 
-export interface StyleSpec {
+/** Longest clip Seedance 2.0 renders in one request. */
+export const MAX_CLIP_SECONDS = 15;
+
+export interface ModelSpec {
   id: Style;
   name: string;
-  tagline: string;
-  /** One-line spec shown under the name in price tables. */
   spec: string;
   description: string;
-  /** Price in FCFA for each duration the style supports. */
-  prices: Partial<Record<Duration, number>>;
-  badge?: string;
+  /** Price in FCFA per duration. */
+  prices: Record<Duration, number>;
   /** Higgsfield model path (POST https://api.higgsfield.ai/<path>). */
-  higgsfield: {
-    path: string;
-    resolution?: "480p" | "720p" | "1080p";
-    bitrate_mode?: "standard" | "high";
-    /** Kling-style endpoints take a single image_url and a sound flag. */
-    kind: "seedance" | "kling";
-  };
-  /** Rough wall-clock the user should expect. */
-  eta: string;
+  higgsfield: { path: string; resolution: "480p" | "720p" | "1080p" | "4k" };
+  /** Rough wall-clock the user should expect, per duration. */
+  eta: Record<Duration, string>;
 }
 
-export const STYLES: Record<Style, StyleSpec> = {
-  eclair: {
-    id: "eclair",
-    name: "Éclair",
-    tagline: "Le plus économique",
-    spec: "Qualité standard · 720p · jusqu'à 30 s",
-    description: "Le plus économique, jusqu'à 30 secondes. Idéal pour publier souvent.",
-    prices: { 5: 250, 10: 500, 15: 750, 20: 950, 30: 1450 },
-    higgsfield: {
-      path: "bytedance/seedance-2.5/reference-to-video",
-      resolution: "720p",
-      bitrate_mode: "standard",
-      kind: "seedance",
-    },
-    eta: "1 à 2 min",
-  },
-  naturel: {
-    id: "naturel",
-    name: "Naturel",
-    tagline: "Le plus choisi",
-    spec: "Très naturel · 720p · son inclus",
-    description: "Une vraie personne qui parle de ton produit, très naturelle, comme une cliente.",
-    prices: { 5: 550, 10: 1100, 15: 1600 },
-    badge: "Le plus choisi",
-    higgsfield: {
-      path: "bytedance/seedance-2.5/reference-to-video",
-      resolution: "720p",
-      bitrate_mode: "high",
-      kind: "seedance",
-    },
-    eta: "2 à 3 min",
-  },
-  studio: {
-    id: "studio",
-    name: "Studio",
-    tagline: "Rendu pub soigné",
-    spec: "Rendu pub soigné · 1080p · son inclus",
-    description: "Rendu pub soigné et fluide, créateur et produit fidèles aux références.",
-    prices: { 5: 750, 10: 1450, 15: 2150 },
-    higgsfield: {
-      path: "kling-video/v3.0/std/image-to-video",
-      kind: "kling",
-    },
-    eta: "3 à 5 min",
-  },
-  signature: {
-    id: "signature",
-    name: "Signature",
-    tagline: "Le plus réaliste",
-    spec: "Le plus réaliste · visages et gestes · son inclus",
-    description: "Le plus réaliste : visages, gestes et voix au plus près du réel.",
-    prices: { 5: 900, 10: 1750, 15: 2600 },
-    higgsfield: {
-      path: "bytedance/seedance-2.5/reference-to-video",
-      resolution: "1080p",
-      bitrate_mode: "high",
-      kind: "seedance",
-    },
-    eta: "4 à 6 min",
-  },
+export const MODEL: ModelSpec = {
+  id: "seedance",
+  name: "Seedance 2.0",
+  spec: "Vidéo verticale 9:16 · 720p · voix et son inclus",
+  description: "Un créateur africain présente ton produit face caméra, en français, avec un script écrit par Claude.",
+  prices: { 15: 1600, 30: 3000 },
+  higgsfield: { path: "bytedance/seedance-2.0/reference-to-video", resolution: "720p" },
+  eta: { 15: "2 à 3 min", 30: "3 à 4 min" },
 };
 
-export const STYLE_ORDER: Style[] = ["eclair", "naturel", "studio", "signature"];
+/** Kept so the `style` column and existing call sites stay valid. */
+export const STYLES: Record<Style, ModelSpec> = { seedance: MODEL };
 
 export function isStyle(v: unknown): v is Style {
-  return typeof v === "string" && v in STYLES;
+  return v === "seedance";
 }
 
 export function isDuration(v: unknown): v is Duration {
   return DURATIONS.includes(v as Duration);
 }
 
-/** Durations a style can be ordered in, shortest first. */
-export function durationsFor(style: Style): Duration[] {
-  return DURATIONS.filter((d) => STYLES[style].prices[d] !== undefined);
+/** Closest offered duration to any number of seconds. */
+export function closestDuration(seconds: number): Duration {
+  return DURATIONS.reduce((a, b) => (Math.abs(b - seconds) < Math.abs(a - seconds) ? b : a));
 }
 
-export function supports(style: Style, duration: Duration): boolean {
-  return STYLES[style].prices[duration] !== undefined;
+/** Number of Seedance clips needed for a duration. */
+export function clipCount(duration: Duration): number {
+  return Math.ceil(duration / MAX_CLIP_SECONDS);
 }
 
-/** Closest duration the style supports (used when switching style). */
-export function clampDuration(style: Style, duration: Duration): Duration {
-  const allowed = durationsFor(style);
-  if (allowed.includes(duration)) return duration;
-  return allowed.reduce((a, b) => (Math.abs(b - duration) < Math.abs(a - duration) ? b : a));
+export function videoPrice(duration: Duration): number {
+  return MODEL.prices[duration];
 }
 
-/** Price of one video in FCFA. Throws for an unsupported combination. */
-export function videoPrice(style: Style, duration: Duration): number {
-  const p = STYLES[style].prices[duration];
-  if (p === undefined) throw new Error(`${STYLES[style].name} n'existe pas en ${duration} s.`);
-  return p;
-}
-
-/** Cheapest price of a style, for "dès …" labels. */
-export function fromPrice(style: Style): number {
-  return Math.min(...(Object.values(STYLES[style].prices) as number[]));
-}
-
-/** Cheapest video across all styles. */
 export function lowestPrice(): number {
-  return Math.min(...STYLE_ORDER.map(fromPrice));
+  return Math.min(...DURATIONS.map(videoPrice));
 }
 
 export function formatFcfa(n: number): string {
-  // Non-breaking spaces so "1 450 FCFA" never wraps mid-number.
+  // Non-breaking spaces so "1 600 FCFA" never wraps mid-number.
   return `${n.toLocaleString("fr-FR").replace(/[   ]/g, " ")} FCFA`;
 }

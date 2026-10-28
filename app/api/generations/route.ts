@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { badRequest, notFound, readJson, requireUser, route } from "@/lib/api";
 import { getDb, now } from "@/lib/db";
 import type { BriefContent, Generation, Message, Thread } from "@/lib/types";
-import { isDuration, isStyle, supports, STYLES } from "@/lib/models";
+import { isDuration } from "@/lib/models";
 import { getActor } from "@/lib/actors";
 import { createGeneration, publicGeneration } from "@/lib/services/generations";
 import { createOrder } from "@/lib/services/orders";
@@ -32,9 +32,7 @@ interface Body {
 export const POST = route(async (req: NextRequest) => {
   const user = await requireUser();
   const body = await readJson<Body>(req);
-  if (!isStyle(body.style)) badRequest("Style invalide.");
-  if (!isDuration(body.duration)) badRequest("Durée invalide.");
-  if (!supports(body.style, body.duration)) badRequest(`${STYLES[body.style].name} n'existe pas en ${body.duration} s.`);
+  if (!isDuration(body.duration)) badRequest("Durée invalide : 15 ou 30 secondes.");
   const actor = getActor(body.actorId);
   if (!actor) badRequest("Créateur invalide.");
   const script = String(body.script ?? "").trim();
@@ -52,7 +50,7 @@ export const POST = route(async (req: NextRequest) => {
     threadId: thread.id,
     briefMessage: msg,
     brief,
-    style: body.style,
+    style: "seedance",
     duration: body.duration,
     actorId: actor.id,
     script,
@@ -60,7 +58,7 @@ export const POST = route(async (req: NextRequest) => {
 
   // Keep the brief in sync with what was launched and attach a video message.
   await db.update<Message>("messages", msg.id, {
-    content: { ...brief, style: body.style, duration: body.duration, actorId: actor.id, script, generationId: generation.id },
+    content: { ...brief, style: "seedance", duration: body.duration, actorId: actor.id, script, generationId: generation.id },
   });
   const videoMsg = await db.insert<Message>("messages", {
     thread_id: thread.id,

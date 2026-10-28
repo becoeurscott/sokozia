@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import type { Order } from "@/lib/types";
-import { STYLES, formatFcfa } from "@/lib/models";
+import { formatFcfa } from "@/lib/models";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 
@@ -55,7 +55,7 @@ export default async function ComptePage() {
                   <tr key={o.id}>
                     <td className="p-3 text-muted">{new Date(o.created_at).toLocaleString("fr-FR")}</td>
                     <td className="p-3">
-                      {STYLES[o.style].name} · {o.duration} s
+                      Vidéo · {o.duration} s
                     </td>
                     <td className="p-3 font-semibold">{formatFcfa(o.amount)}</td>
                     <td className="p-3">

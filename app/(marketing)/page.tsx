@@ -2,7 +2,8 @@ import Link from "next/link";
 import { ArrowRight, MessageCircle, Users, Clapperboard, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ACTORS } from "@/lib/actors";
-import { STYLE_ORDER, STYLES, durationsFor, formatFcfa, fromPrice, lowestPrice } from "@/lib/models";
+import { formatFcfa, lowestPrice } from "@/lib/models";
+import { PriceTable } from "@/components/marketing/PriceTable";
 import { ActorAvatar } from "@/components/ui/ActorAvatar";
 
 export default function LandingPage() {
@@ -58,7 +59,7 @@ export default function LandingPage() {
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand font-bold text-white">A</span>
                   <div>
                     <div className="font-semibold">Awa · Directrice de création</div>
-                    <div className="text-muted">Top ! Nneka dans un salon de coiffure, 15 s, style Naturel : « Les filles, -20 % sur toutes mes perruques ce week-end ! »</div>
+                    <div className="text-muted">Top ! Nneka dans un salon de coiffure, 15 s : « Les filles, -20 % sur toutes mes perruques ce week-end ! »</div>
                   </div>
                 </div>
               </div>
@@ -71,7 +72,7 @@ export default function LandingPage() {
       <section className="border-y border-line bg-card">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-10 text-center md:grid-cols-4">
           {[
-            ["5–30 s", "de vraies pubs"],
+            ["15 ou 30 s", "de vraies pubs"],
             ["9:16", "format TikTok / Reels"],
             ["0", "acteur à payer"],
             ["0 FCFA", "si la pub échoue"],
@@ -92,7 +93,7 @@ export default function LandingPage() {
           {[
             [MessageCircle, "Parle de ton produit", "Décris-le, colle un lien, envoie tes photos. Awa prépare le brief en quelques secondes."],
             [Users, "Choisis ton créateur et le lieu", "16 créateurs africains. Boutique, marché, salon… le créateur garde le même visage dans toutes tes pubs."],
-            [Clapperboard, "Valide le script et crée", "De 5 à 30 secondes. Choisis le style, le prix s'affiche avant de payer. La vidéo apparaît dans la conversation."],
+            [Clapperboard, "Valide le script et crée", "15 ou 30 secondes, tournée avec Seedance 2.0. Le prix s'affiche avant de payer, la vidéo apparaît dans la conversation."],
           ].map(([Icon, t, d], i) => {
             const I = Icon as typeof MessageCircle;
             return (
@@ -137,26 +138,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Styles */}
+      {/* Pricing */}
       <section className="mx-auto max-w-6xl px-4 py-16">
-        <h2 className="text-3xl font-extrabold md:text-4xl">4 styles, selon ton budget</h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-4">
-          {STYLE_ORDER.map((s) => (
-            <div key={s} className={`rounded-2xl border p-5 ${STYLES[s].badge ? "border-brand bg-brand-soft/40" : "border-line bg-card"}`}>
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-extrabold">{STYLES[s].name}</h3>
-                {STYLES[s].badge && <span className="rounded-pill bg-brand px-2 py-0.5 text-[10px] font-bold text-white">{STYLES[s].badge}</span>}
-              </div>
-              <p className="mt-2 min-h-[60px] text-sm text-muted">{STYLES[s].description}</p>
-              <div className="mt-4 text-xs text-muted">dès</div>
-              <div className="text-2xl font-extrabold text-brand">{formatFcfa(fromPrice(s))}</div>
-              <div className="text-xs text-muted">la pub de {durationsFor(s)[0]} s · jusqu&apos;à {durationsFor(s).slice(-1)[0]} s</div>
-            </div>
-          ))}
+        <h2 className="text-3xl font-extrabold md:text-4xl">Deux formats, un prix fixe</h2>
+        <p className="mt-2 max-w-2xl text-muted">Claude écrit le script comme une directrice de création, Seedance 2.0 tourne la vidéo. Tu choisis 15 ou 30 secondes et tu payes la vidéo, c&apos;est tout.</p>
+        <div className="mt-8">
+          <PriceTable />
         </div>
         <div className="mt-6">
           <Link href="/tarifs" className="font-semibold text-brand hover:underline">
-            Voir tous les prix →
+            Tous les détails →
           </Link>
         </div>
       </section>

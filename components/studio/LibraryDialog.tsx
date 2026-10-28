@@ -6,7 +6,6 @@ import { Dialog } from "@/components/ui/Dialog";
 import { useStudio } from "./StudioProvider";
 import { api } from "@/lib/client/api";
 import type { Generation } from "@/lib/types";
-import { STYLES } from "@/lib/models";
 import { getActor } from "@/lib/actors";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -43,7 +42,7 @@ export function LibraryDialog() {
                 ) : (
                   <div className="shimmer h-full w-full" />
                 )}
-                <span className="absolute left-2 top-2 rounded-pill bg-ink/70 px-2 py-0.5 text-[10px] font-semibold text-white">{STYLES[g.style].name}</span>
+                <span className="absolute left-2 top-2 rounded-pill bg-ink/70 px-2 py-0.5 text-[10px] font-semibold text-white">{g.duration} s</span>
               </div>
               <div className="p-2">
                 <div className="truncate text-xs font-semibold">{g.product}</div>

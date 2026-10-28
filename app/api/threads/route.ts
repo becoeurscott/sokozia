@@ -3,7 +3,7 @@ import { readJson, requireUser, route } from "@/lib/api";
 import { getDb, now } from "@/lib/db";
 import type { Message, Thread } from "@/lib/types";
 import { buildBrief } from "@/lib/agent/brief";
-import type { Duration, Style } from "@/lib/models";
+import type { Duration } from "@/lib/models";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,6 @@ interface NewThreadBody {
   imageUrl?: string | null;
   actorId?: string | null;
   duration?: Duration | null;
-  style?: Style | null;
 }
 
 /** Creates a thread from the first prompt and answers with Awa's brief. */
@@ -45,7 +44,7 @@ export const POST = route(async (req: NextRequest) => {
     content: { text, imageUrl: body.imageUrl ?? null },
     created_at: ts,
   });
-  const brief = await buildBrief({ text, imageUrl: body.imageUrl, actorId: body.actorId, duration: body.duration, style: body.style });
+  const brief = await buildBrief({ text, imageUrl: body.imageUrl, actorId: body.actorId, duration: body.duration });
   const briefMsg = await db.insert<Message>("messages", {
     thread_id: thread.id,
     user_id: user.id,

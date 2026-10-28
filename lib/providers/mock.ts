@@ -4,7 +4,7 @@ import { appUrl } from "../auth";
 
 /**
  * Fake providers so the whole product works before any key exists.
- * Generation goes queued -> in_progress -> completed in ~9 s.
+ * Each clip goes queued -> in_progress -> completed in ~9 s.
  */
 export const SAMPLE_VIDEO = "/samples/sample.mp4";
 export const SAMPLE_POSTER = "/samples/sample.jpg";
@@ -19,10 +19,10 @@ const failedOnce = (g.__sokoziaFailedOnce ??= new Set<string>());
 
 export const mockVideo: VideoProvider = {
   name: "mock",
-  async submit({ generation }) {
-    return { requestId: `mock_${generation.id}`, statusUrl: null };
+  async submit({ generation, part }) {
+    return { requestId: `mock_${generation.id}_${part}`, statusUrl: null };
   },
-  async check(generation): Promise<CheckResult> {
+  async check(_part, generation): Promise<CheckResult> {
     const started = generation.started_at ? Date.parse(generation.started_at) : Date.now();
     const elapsed = (Date.now() - started) / 1000;
     const key = generation.order_id ?? generation.id;

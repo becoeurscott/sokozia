@@ -1,6 +1,6 @@
 import "server-only";
 import type { CheckResult, SubmitInput, SubmitResult, VideoProvider } from "./types";
-import { STYLES } from "../models";
+import { MAX_CLIP_SECONDS, MODEL } from "../models";
 
 const BASE = "https://api.higgsfield.ai";
 
@@ -38,34 +38,19 @@ async function hf<T>(url: string, init: RequestInit = {}): Promise<T> {
   return json as T;
 }
 
-/** Builds the JSON body for the chosen style. */
+/** Seedance 2.0 reference-to-video body for one clip (max 15 s). */
 export function buildBody(input: SubmitInput): { path: string; body: Record<string, unknown> } {
-  const { generation, actorImageUrl, productImageUrl } = input;
-  const spec = STYLES[generation.style];
+  const { actorImageUrl, productImageUrl } = input;
   const images = [actorImageUrl, productImageUrl].filter(Boolean) as string[];
-
-  if (spec.higgsfield.kind === "kling") {
-    return {
-      path: spec.higgsfield.path,
-      body: {
-        prompt: generation.prompt,
-        image_url: productImageUrl ?? actorImageUrl,
-        duration: Math.min(15, generation.duration),
-        sound: "on",
-        aspect_ratio: "9:16",
-      },
-    };
-  }
   return {
-    path: spec.higgsfield.path,
+    path: MODEL.higgsfield.path,
     body: {
-      prompt: generation.prompt,
+      prompt: input.prompt,
       image_urls: images,
-      duration: generation.duration,
+      duration: Math.min(MAX_CLIP_SECONDS, input.duration),
       aspect_ratio: "9:16",
-      resolution: spec.higgsfield.resolution ?? "720p",
+      resolution: MODEL.higgsfield.resolution,
       generate_audio: true,
-      bitrate_mode: spec.higgsfield.bitrate_mode ?? "high",
     },
   };
 }
@@ -93,12 +78,12 @@ export const higgsfieldVideo: VideoProvider = {
     const res = await hf<SubmitResponse>(url.toString(), {
       method: "POST",
       body: JSON.stringify(body),
-      headers: { "Idempotency-Key": input.generation.id },
+      headers: { "Idempotency-Key": `${input.generation.id}:${input.part}` },
     });
     return { requestId: res.request_id, statusUrl: res.status_url };
   },
-  async check(generation): Promise<CheckResult> {
-    const url = generation.provider_status_url ?? `${BASE}/requests/${generation.provider_request_id}/status`;
+  async check(part): Promise<CheckResult> {
+    const url = part.status_url ?? `${BASE}/requests/${part.request_id}/status`;
     const res = await hf<StatusResponse>(url);
     return mapStatus(res.status, res.video?.url ?? null, res.error);
   },

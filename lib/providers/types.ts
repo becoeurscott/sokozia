@@ -1,7 +1,13 @@
-import type { Generation, Order } from "../types";
+import type { Generation, GenerationPart, Order } from "../types";
 
+/** One Seedance clip request. */
 export interface SubmitInput {
   generation: Generation;
+  /** Clip index (0-based) and total, for idempotency and mock timing. */
+  part: number;
+  parts: number;
+  prompt: string;
+  duration: number;
   actorImageUrl: string;
   productImageUrl: string | null;
   webhookUrl: string | null;
@@ -23,7 +29,7 @@ export interface CheckResult {
 export interface VideoProvider {
   name: "mock" | "higgsfield";
   submit(input: SubmitInput): Promise<SubmitResult>;
-  check(generation: Generation): Promise<CheckResult>;
+  check(part: GenerationPart, generation: Generation): Promise<CheckResult>;
 }
 
 export interface CheckoutInput {

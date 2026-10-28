@@ -39,8 +39,9 @@ create table if not exists public.generations (
   user_id uuid not null,
   thread_id uuid not null references public.threads (id) on delete cascade,
   message_id uuid,
-  style text not null check (style in ('eclair', 'naturel', 'studio', 'signature')),
-  duration int not null check (duration in (5, 10, 15, 20, 30)),
+  -- One model today (Seedance 2.0); the column stays so others can be added.
+  style text not null default 'seedance' check (style in ('seedance')),
+  duration int not null check (duration in (15, 30)),
   actor_id text not null,
   product text not null,
   product_image_url text,
@@ -49,6 +50,8 @@ create table if not exists public.generations (
   provider text not null default 'higgsfield',
   provider_request_id text,
   provider_status_url text,
+  -- One entry per Seedance clip: a 30 s ad is two 15 s clips joined with ffmpeg.
+  parts jsonb,
   status text not null default 'awaiting_payment'
     check (status in ('awaiting_payment', 'queued', 'in_progress', 'completed', 'failed', 'nsfw')),
   video_url text,
@@ -70,7 +73,7 @@ create unique index if not exists generations_provider_request on public.generat
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null,
-  style text not null,
+  style text not null default 'seedance',
   duration int not null,
   amount int not null,
   currency text not null default 'XAF',

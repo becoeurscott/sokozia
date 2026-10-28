@@ -34,11 +34,16 @@ export async function POST(req: NextRequest) {
   );
   if (!fresh) return NextResponse.json({ ok: true, duplicate: true });
 
-  const generation = await db.find<Generation>("generations", { provider_request_id: body.request_id });
+  // `g` is set on the webhook URL at submit time: a 30 s ad has two clips,
+  // and only the first clip's id is stored in provider_request_id.
+  const gid = req.nextUrl.searchParams.get("g");
+  const generation = gid
+    ? await db.get<Generation>("generations", gid)
+    : await db.find<Generation>("generations", { provider_request_id: body.request_id });
   if (!generation) return NextResponse.json({ ok: true, unknown: true });
 
   // Finish the copy to storage after responding, so Higgsfield gets a fast 2xx.
-  const work = applyResult(generation, mapStatus(body.status, body.payload?.video?.url ?? null, body.error)).catch((e) =>
+  const work = applyResult(generation, mapStatus(body.status, body.payload?.video?.url ?? null, body.error), body.request_id).catch((e) =>
     console.error("[webhook:higgsfield]", e),
   );
   if (process.env.NODE_ENV !== "production") await work;
