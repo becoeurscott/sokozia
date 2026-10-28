@@ -1,5 +1,6 @@
 import { hfEstimate } from "./higgsfield";
 import { loadPricing, type Pricing, type PricedStyle } from "./pricing";
+import { DIRECTORS, type DirectorId } from "./director";
 
 // Prix à l'usage : coût réel Higgsfield (estimation en direct si dispo, sinon coût/s enregistré) × marge (1,4 = +40 %).
 const cache = new Map<string, { usd: number; at: number }>();
@@ -26,10 +27,11 @@ export function priceFromCost(p: Pricing, usd: number, currency: string) {
   return Math.max(50, Math.ceil(local / 50) * 50);
 }
 
-export async function quote(styleId: string, duration: number, aspect: string, currency: string, pricing?: Pricing) {
+export async function quote(styleId: string, duration: number, aspect: string, currency: string, pricing?: Pricing, director: DirectorId = "sonnet") {
   const p = pricing ?? await loadPricing();
   const style = p.styles.find((s) => s.id === styleId);
   if (!style || !style.durations.includes(duration) || !style.aspect_ratios.includes(aspect)) return null;
-  const usd = await costUsd(style, duration, aspect);
+  // Coût réel = vidéo (Higgsfield) + réalisation par Claude (directeur choisi).
+  const usd = (await costUsd(style, duration, aspect)) + DIRECTORS[director].usd;
   return { style, usd, price: priceFromCost(p, usd, currency) };
 }

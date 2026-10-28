@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 const STAGES = [
-  "Analyse de ton produit",
-  "Écriture de la scène",
+  "Claude analyse ton produit",
+  "Claude écrit la scène",
   "Mise en place du décor",
   "Rendu des images",
   "Animation et mouvements",
@@ -13,7 +13,7 @@ const STAGES = [
 ];
 
 /** Écran de rendu affiché pendant que le modèle crée la vidéo. Progression estimée (jamais 100 % avant la fin). */
-export function RenderLoading({ image, aspect, etaSec, startedAt }: { image: string; aspect: string; etaSec: number; startedAt: number }) {
+export function RenderLoading({ image, aspect, etaSec, startedAt, note }: { image: string; aspect: string; etaSec: number; startedAt: number; note?: string }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(t); }, []);
   const elapsed = Math.max(0, (now - startedAt) / 1000);
@@ -42,7 +42,8 @@ export function RenderLoading({ image, aspect, etaSec, startedAt }: { image: str
           <p className="mt-1.5 text-xs text-white/70">{Math.round(pct)} % · environ {Math.max(1, Math.round(etaSec / 60))} min au total</p>
         </div>
       </div>
-      <p className="mx-auto mt-4 max-w-sm text-center text-sm text-muted">Tu peux quitter cette page : ta vidéo arrivera dans « Mes vidéos ».</p>
+      {note && <p className="mx-auto mt-4 w-fit rounded-full border border-line bg-card px-4 py-1.5 text-center text-sm font-semibold">{note}</p>}
+      <p className="mx-auto mt-3 max-w-sm text-center text-sm text-muted">Tu peux quitter cette page : ta vidéo arrivera dans « Mes vidéos ».</p>
       <style>{`
         .rl-img{filter:blur(14px) saturate(1.2) brightness(.7);transform:scale(1.15);animation:rl-focus 8s ease-in-out infinite alternate}
         @keyframes rl-focus{to{filter:blur(6px) saturate(1.3) brightness(.85);transform:scale(1.05)}}

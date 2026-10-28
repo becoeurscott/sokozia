@@ -59,9 +59,17 @@ Langue parlée : ${p.language}`;
 
 export const CHARACTER_SHEET_TEMPLATE = `A three-panel character reference sheet composed as one horizontal frame, divided into three equal vertical panels side by side, thin clean separation between panels, the same figure and the same outfit rendered identically across all three. [Identity paragraph: build, skin, hair color/length/texture, makeup register, identity markers, nails. Described ONCE, applies to all three panels.] [Wardrobe paragraph: full outfit head-to-toe, every garment, fabric, color, construction detail, footwear, jewelry. Described ONCE, applies to all three panels.] LEFT PANEL — full body front view, no head, no neck, and no hair. The body stands squared to camera from the shoulders down to [the shoes / the hem], arms relaxed at the sides, hands open and loose, weight even across both feet. There is no head, no neck, and no hair at all — nothing rises above the shoulder line, and no hair falls across the chest or shoulders. The [collar type] of the [garment] holds its own shape at the top of the garment and its opening is an empty dark hollow looking down into the inside of the [garment], with the inner back of the fabric faintly visible inside the opening. The garment reads as if worn by an invisible body — full three-dimensional shape, natural drape, real fabric tension across the chest and shoulders, but nothing emerging from the neckline. No stump, no skin, no cut edge, no anatomy, no blood, no fade, no blur, no ghosting, no transparency in the body. The panel keeps full headroom, generous empty mid-gray backdrop above the shoulders, so the figure sits at the same scale and position in the frame as a normal full-body portrait. CENTER PANEL — full body rear view, head attached. The same figure photographed from directly behind, standing straight, [hair fall from behind], [garment back construction], arms relaxed at the sides, hands loose, weight even across both feet, from the top of the head down to [the shoes / the end of the hem]. RIGHT PANEL — tight chest-up portrait, identity lock. The same figure framed from just above the top of the head down to the collarbones and the very top of the garment only, the face filling most of the panel, a true close-up. Body squared to camera, head level, eyes directly to camera, lips closed and relaxed, neutral controlled expression. [Hair, brows, lashes, lip texture, key identity markers] all clearly readable at close range. 18% neutral gray seamless studio backdrop applied uniformly across all three panels — one single flat uniform value corner to corner in every panel, no seam line, no gradient, no hotspot, no vignette, no falloff to black or white, and the identical gray value in all three panels. Relight from scratch overriding any reference lighting: completely flat shadowless illumination in every panel — one enormous soft frontal source at camera position with matched equal fill from camera-left, camera-right, above, and below, so both sides of the face and body read at exactly the same brightness. No key-and-fill ratio, no modelling, no shadow side, no nose shadow, no under-chin shadow, no rim light, no hair light, no kicker, no specular hotspot. Zero shadow cast onto the background in any panel — the backdrop stays clean flat gray behind and around the figure. No contact shadow, no drop shadow, no ambient occlusion on the floor beneath the feet. Extremely low contrast, even, milky, catalogue-flat, identical in every panel. Form is described by fabric folds, garment structure, and bone structure alone, not by light and shadow. Skin and fabric read matte and velvety, no shine, no gloss, no oily T-zone. Skin renders at its true natural skin tone, identical in value and hue across the face, arms, and body in every panel, never darkened, never tanned, never pale or washed-out or cool-shifted by the background. [Garment colors] render true and consistent across all three panels. Real peach fuzz at the jaw and hairline, real fine even pore texture, subsurface scattering reading as semi-translucent biology, real fabric weave and drape, visible fine metal surface detail on the jewelry, never plastic, never waxy, never harsh. Photographed on a 50mm prime, even sharpness, soft natural film grain. Photographed not generated.`;
 
-// Cerveau d'Awa : Claude (via OpenRouter) ; en cas d'échec, repli automatique sur un second modèle.
-const DIRECTOR = process.env.DIRECTOR_MODEL || "anthropic/claude-sonnet-5.5";
-const FALLBACK = process.env.DIRECTOR_FALLBACK_MODEL || "google/gemini-2.5-flash";
+// Cerveau d'Awa : uniquement Claude (via OpenRouter). Le client choisit le directeur ; en cas d'échec
+// on repasse sur un autre Claude, jamais sur un autre fournisseur.
+export const DIRECTORS = {
+  haiku: { model: "anthropic/claude-haiku-5.5", name: "Claude Haiku", hint: "Rapide et simple", usd: 0.002 },
+  sonnet: { model: "anthropic/claude-sonnet-5.5", name: "Claude Sonnet", hint: "Équilibré, le plus choisi", usd: 0.02 },
+  opus: { model: "anthropic/claude-opus-5.5", name: "Claude Opus", hint: "Le plus créatif et le plus précis", usd: 0.04 },
+} as const;
+export type DirectorId = keyof typeof DIRECTORS;
+export const isDirector = (d: unknown): d is DirectorId => typeof d === "string" && d in DIRECTORS;
+const DIRECTOR = DIRECTORS.sonnet.model;
+const chain = (first: string) => [first, ...Object.values(DIRECTORS).map((d) => d.model).filter((m) => m !== first)].slice(0, 2);
 
 function parseJSON<T>(text: string): T {
   const clean = text.replace(/```(?:json)?/g, "").trim();
@@ -70,15 +78,17 @@ function parseJSON<T>(text: string): T {
   return JSON.parse(start >= 0 && end > start ? clean.slice(start, end + 1) : clean) as T;
 }
 
-async function callModel<T>(model: string, task: string): Promise<T> {
+async function callModel<T>(model: string, task: string, image?: string): Promise<T> {
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
       max_tokens: 3000,
-      ...(model.startsWith("anthropic/") ? {} : { response_format: { type: "json_object" } }),
-      messages: [{ role: "system", content: BASE }, { role: "user", content: task }],
+      messages: [{ role: "system", content: BASE }, {
+        role: "user",
+        content: image ? [{ type: "image_url", image_url: { url: image } }, { type: "text", text: task }] : task,
+      }],
     }),
   });
   if (!res.ok) throw new Error(`director ${res.status}`);
@@ -86,11 +96,12 @@ async function callModel<T>(model: string, task: string): Promise<T> {
   return parseJSON<T>(json.choices?.[0]?.message?.content ?? "{}");
 }
 
-async function askJSON<T>(task: string): Promise<T> {
+async function askJSON<T>(task: string, o: { model?: string; image?: string } = {}): Promise<T> {
+  const [first, backup] = chain(o.model ?? DIRECTOR);
   try {
-    return await callModel<T>(DIRECTOR, task);
+    return await callModel<T>(first, task, o.image);
   } catch {
-    return callModel<T>(FALLBACK, task);
+    return callModel<T>(backup, task, o.image);
   }
 }
 
@@ -280,18 +291,27 @@ Expression naturelle, lumière du lieu, aucun texte à l'écran.
 JSON : {"prompt": "le prompt en anglais"}`);
 }
 
-// Générateur direct : transforme la demande du client (photo produit + texte) en prompt vidéo anglais pour le modèle.
-export async function renderPrompt(userPrompt: string, duration: number, aspect: string) {
-  const fallback = `Authentic UGC-style vertical ad filmed on a phone. The exact product from the reference image is the hero: keep its shape, colors, label and logo identical. ${userPrompt}. Natural light, real African setting, handheld camera, smooth motion, ${duration} seconds, ${aspect}.`;
+// Générateur direct : Claude regarde la photo du produit, choisit lui-même le style de pub le plus
+// adapté (s'il n'est pas imposé), puis écrit le prompt vidéo pour le modèle qui va la tourner.
+export async function directAd(o: { director: DirectorId; image: string; request: string; duration: number; aspect: string; endpoint: string | null }) {
+  const styles = FORMATS.map((f) => `- ${f.id} (${f.label}) : ${f.when}. ${f.direction}`).join("\n");
+  const fallback = {
+    style: "Démonstration",
+    prompt: `Authentic UGC-style ad filmed on a phone. The exact product from the reference image is the hero: keep its shape, colors, label and logo identical. ${o.request || "A friendly African creator presents the product and shows its main benefit"}. Natural light, real African setting, handheld camera, ${o.duration} seconds, ${o.aspect}.`,
+  };
   try {
     const r = await Promise.race([
-      askJSON<{ prompt: string }>(`Tu écris le prompt d'une vidéo pub générée par IA à partir de la PHOTO DU PRODUIT (image de départ) et de la demande du client.
-DEMANDE DU CLIENT : ${userPrompt}
-DURÉE : ${duration} s · FORMAT : ${aspect}
-Règles : prompt en anglais, 60 à 120 mots, une seule scène continue. Le produit de la photo reste strictement identique (forme, couleurs, étiquette, logo). Style UGC authentique filmé au téléphone, cadre et personnes africains si des personnes apparaissent. Si le client veut une voix ou un texte parlé, écris la réplique entre guillemets dans la langue demandée (français par défaut). Pas de texte incrusté à l'écran. Décris mouvement de caméra, lumière, action.
-Réponds en JSON : {"prompt": "..."}`),
-      new Promise<never>((_, no) => setTimeout(() => no(new Error("timeout")), 20000)),
+      askJSON<{ style: string; prompt: string }>(`Tu es le réalisateur de cette pub vidéo. L'image jointe est la PHOTO DU PRODUIT : c'est aussi la première image de la vidéo.
+1. Regarde le produit (type, couleurs, étiquette, texte lisible, gamme de prix probable) et déduis à qui il se vend.
+2. ${o.request ? `Le client demande : « ${o.request} ». Respecte sa demande, complète ce qui manque.` : "Le client n'a rien précisé : décide toi-même de tout."}
+3. Choisis le style de pub le plus efficace parmi :
+${styles}
+4. Écris le prompt vidéo EN ANGLAIS (70 à 130 mots) pour une vidéo de ${o.duration} secondes au format ${o.aspect}, adapté au modèle :
+${modelGuide(o.endpoint)}
+Règles : le produit reste strictement identique à la photo (forme, couleurs, étiquette, logo). Style UGC authentique filmé au téléphone. Personnes et lieux africains, crédibles. Une réplique courte et naturelle en français entre guillemets (sauf si le client demande une autre langue), adaptée à ${o.duration} secondes. Pas de texte incrusté à l'écran.
+Réponds en JSON : {"style": "nom du style en français", "prompt": "..."}`, { model: DIRECTORS[o.director].model, image: o.image }),
+      new Promise<never>((_, no) => setTimeout(() => no(new Error("timeout")), 45000)),
     ]);
-    return r?.prompt?.trim() || fallback;
+    return r?.prompt?.trim() ? { style: r.style?.trim() || fallback.style, prompt: r.prompt.trim() } : fallback;
   } catch { return fallback; }
 }

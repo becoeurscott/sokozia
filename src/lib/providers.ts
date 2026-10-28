@@ -8,7 +8,7 @@ export type StyleRow = af.StyleConfig & { provider?: string | null; hf_endpoint?
 export const STYLE_COLS = "id, provider, hf_endpoint, hf_params, apiframe_model, apiframe_params, params_key, image_key, refs_key";
 
 // Nos images stockées redirigent vers un lien CDN signé : on donne directement le lien final à Higgsfield.
-async function direct(url: string) {
+export async function direct(url: string) {
   try {
     const r = await fetch(url, { method: "HEAD", redirect: "manual" });
     const loc = r.headers.get("location");

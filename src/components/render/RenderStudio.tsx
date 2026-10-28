@@ -7,6 +7,7 @@ import { Pick } from "./Pick";
 import { TopupSheet } from "./Topup";
 import { RenderLoading } from "./RenderLoading";
 
+export type DirectorCard = { id: string; name: string; hint: string };
 export type ModelCard = { id: string; name: string; quality: string; description: string; durations: number[]; aspects: string[]; eta: number; sample: string | null };
 export type Recent = { id: string; status: string; url: string | null; image: string | null; aspect: string; prompt: string; created_at: string };
 
@@ -23,8 +24,8 @@ async function shrink(file: File): Promise<Blob> {
   return new Promise((ok) => c.toBlob((b) => ok(b ?? file), "image/jpeg", 0.85));
 }
 
-export default function RenderStudio({ models, balance: initialBalance, currency, isAdmin, name, recent: initialRecent }: {
-  models: ModelCard[]; balance: number; currency: string; isAdmin: boolean; name: string; recent: Recent[];
+export default function RenderStudio({ models, directors, balance: initialBalance, currency, isAdmin, name, recent: initialRecent }: {
+  models: ModelCard[]; directors: DirectorCard[]; balance: number; currency: string; isAdmin: boolean; name: string; recent: Recent[];
 }) {
   const [balance, setBalance] = useState(initialBalance);
   const [recent, setRecent] = useState(initialRecent);
@@ -35,10 +36,11 @@ export default function RenderStudio({ models, balance: initialBalance, currency
   const model = models.find((m) => m.id === modelId) ?? models[0];
   const [duration, setDuration] = useState(model?.durations.includes(10) ? 10 : model?.durations[0] ?? 5);
   const [aspect, setAspect] = useState("9:16");
+  const [director, setDirector] = useState("sonnet");
   const [prices, setPrices] = useState<Record<number, number>>({});
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const [job, setJob] = useState<{ id: string; image: string; aspect: string; eta: number; startedAt: number } | null>(null);
+  const [job, setJob] = useState<{ id: string | null; image: string; aspect: string; eta: number; startedAt: number; note: string } | null>(null);
   const [done, setDone] = useState<{ url: string; aspect: string } | null>(null);
   const [topup, setTopup] = useState<{ need?: number } | null>(null);
   const [menu, setMenu] = useState(false);
@@ -57,14 +59,14 @@ export default function RenderStudio({ models, balance: initialBalance, currency
     let live = true;
     setPrices({});
     Promise.all(model.durations.map((d) =>
-      fetch(`/api/render?model=${model.id}&duration=${d}&aspect=${encodeURIComponent(aspect)}`).then((r) => r.json()).then((j) => [d, j.price as number] as const).catch(() => [d, 0] as const),
+      fetch(`/api/render?model=${model.id}&duration=${d}&aspect=${encodeURIComponent(aspect)}&director=${director}`).then((r) => r.json()).then((j) => [d, j.price as number] as const).catch(() => [d, 0] as const),
     )).then((rows) => live && setPrices(Object.fromEntries(rows.filter(([, p]) => p > 0))));
     return () => { live = false; };
-  }, [model, aspect]);
+  }, [model, aspect, director]);
 
   const price = prices[duration];
   const missing = price && !isAdmin ? Math.max(0, price - balance) : 0;
-  const ready = !!image && prompt.trim().length >= 5 && !!price && !busy && !uploading;
+  const ready = !!image && !!price && !busy && !uploading;
 
   async function pick(files: FileList | null) {
     const f = files?.[0];
@@ -84,19 +86,25 @@ export default function RenderStudio({ models, balance: initialBalance, currency
     if (!ready || !model) return;
     if (missing > 0) return setTopup({ need: missing });
     setBusy(true); setError(undefined); setDone(null);
-    const r = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl: image, prompt, duration, aspect, model: model.id }) })
+    const dname = directors.find((d) => d.id === director)?.name ?? "Claude";
+    // L'écran de rendu démarre tout de suite : Claude réalise la pub, puis le modèle la tourne.
+    setJob({ id: null, image: image!, aspect, eta: model.eta + 20, startedAt: Date.now(), note: `${dname} réalise ta pub…` });
+    const r = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl: image, prompt, duration, aspect, model: model.id, director }) })
       .then((r) => r.json()).catch(() => ({ error: "Connexion perdue." }));
     setBusy(false);
-    if (r.needTopup) return setTopup({ need: Math.max(0, (r.price ?? price) - balance) });
-    if (!r.videoId) return setError(r.error ?? "La création n'a pas pu démarrer.");
+    if (!r.videoId) {
+      setJob(null);
+      if (r.needTopup) return setTopup({ need: Math.max(0, (r.price ?? price) - balance) });
+      return setError(r.error ?? "La création n'a pas pu démarrer.");
+    }
     if (!isAdmin) setBalance((b) => b - price);
-    setJob({ id: r.videoId, image: image!, aspect, eta: model.eta, startedAt: Date.now() });
+    setJob((j) => j && { ...j, id: r.videoId, note: `Style « ${r.style} » choisi par ${r.director}` });
     setRecent((l) => [{ id: r.videoId, status: "processing", url: null, image, aspect, prompt, created_at: new Date().toISOString() }, ...l]);
   }
 
   // Suivi du rendu en cours.
   const poll = useCallback(async () => {
-    if (!job) return;
+    if (!job?.id) return;
     const r = await fetch(`/api/render?id=${job.id}`).then((r) => r.json()).catch(() => null);
     if (!r) return;
     if (r.status === "ready" && r.url) {
@@ -109,7 +117,7 @@ export default function RenderStudio({ models, balance: initialBalance, currency
       setRecent((l) => l.map((v) => (v.id === job.id ? { ...v, status: "failed" } : v)));
     }
   }, [job, isAdmin, price]);
-  useEffect(() => { if (!job) return; const t = setInterval(poll, 5000); return () => clearInterval(t); }, [job, poll]);
+  useEffect(() => { if (!job?.id) return; const t = setInterval(poll, 5000); return () => clearInterval(t); }, [job, poll]);
 
   const reset = () => { setDone(null); setJob(null); setPrompt(""); setImage(null); setError(undefined); };
   const balanceLabel = useMemo(() => `${nf(balance)} ${currency}`, [balance, currency]);
@@ -159,7 +167,7 @@ export default function RenderStudio({ models, balance: initialBalance, currency
 
         <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-10 sm:pt-[18vh]">
           {job ? (
-            <RenderLoading image={job.image} aspect={job.aspect} etaSec={job.eta} startedAt={job.startedAt} />
+            <RenderLoading image={job.image} aspect={job.aspect} etaSec={job.eta} startedAt={job.startedAt} note={job.note} />
           ) : done ? (
             <div className="mx-auto w-full max-w-2xl text-center">
               <video src={done.url} controls autoPlay playsInline className="mx-auto block max-h-[65vh] max-w-full rounded-3xl bg-black shadow-2xl" />
@@ -186,7 +194,7 @@ export default function RenderStudio({ models, balance: initialBalance, currency
                 )}
                 <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2} maxLength={1500}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); } }}
-                  placeholder="Décris ta vidéo : qui présente le produit, où, et ce qu'il dit"
+                  placeholder="Facultatif : ce que tu veux mettre en avant (prix, promo, langue…). Sinon Claude décide de tout."
                   className="block min-h-12 w-full resize-none bg-transparent text-[16px] leading-6 outline-none placeholder:text-muted/70" />
                 <input ref={file} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files)} />
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
@@ -195,6 +203,8 @@ export default function RenderStudio({ models, balance: initialBalance, currency
                       className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium hover:bg-[#f6ebdc] ${image ? "text-ink/75" : "text-brand"}`}>
                       {uploading ? <Loader2 size={18} className="animate-spin" /> : <ImagePlus size={18} />}<span className="hidden sm:inline">{image ? "Changer" : "Photo produit"}</span>
                     </button>
+                    <Pick title="Directeur de la pub" icon={<Clapperboard size={16} />} value={director} onChange={setDirector}
+                      options={directors.map((d) => ({ value: d.id, label: d.name, hint: d.hint }))} />
                     <Pick title="Modèle" icon={<Sparkles size={16} />} value={modelId} onChange={setModelId}
                       options={models.map((m) => ({ value: m.id, label: m.name, hint: m.quality }))} />
                     <Pick title="Durée" icon={<Clock size={16} />} value={String(duration)} onChange={(v) => setDuration(Number(v))}

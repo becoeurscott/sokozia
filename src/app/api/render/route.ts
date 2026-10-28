@@ -3,8 +3,8 @@ import { adminClient, getSession } from "@/lib/insforge";
 import { currencyOf, fmt, loadPricing } from "@/lib/pricing";
 import { quote } from "@/lib/quote";
 import { walletApply } from "@/lib/wallet";
-import { STYLE_COLS, startVideoJob, type StyleRow } from "@/lib/providers";
-import { renderPrompt } from "@/lib/director";
+import { direct, STYLE_COLS, startVideoJob, type StyleRow } from "@/lib/providers";
+import { directAd, DIRECTORS, isDirector, type DirectorId } from "@/lib/director";
 import { syncVideo, VIDEO_COLS } from "@/lib/videos";
 
 // Prix d'une génération (modèle + durée + format), pour l'afficher avant de lancer.
@@ -21,7 +21,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ status: v.status, url: v.video_url });
   }
   const currency = currencyOf(profile?.country ?? "CI");
-  const q = await quote(u.searchParams.get("model") ?? "", Number(u.searchParams.get("duration")), u.searchParams.get("aspect") ?? "9:16", currency);
+  const d = u.searchParams.get("director");
+  const q = await quote(u.searchParams.get("model") ?? "", Number(u.searchParams.get("duration")), u.searchParams.get("aspect") ?? "9:16", currency, undefined, isDirector(d) ? d : "sonnet");
   if (!q) return NextResponse.json({ error: "Combinaison indisponible." }, { status: 400 });
   return NextResponse.json({ price: q.price, label: fmt(q.price, currency) });
 }
@@ -30,19 +31,19 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const { user, profile } = await getSession();
   if (!user || !profile) return NextResponse.json({ error: "Connecte-toi d'abord." }, { status: 401 });
-  const b = (await req.json()) as { imageUrl?: string; prompt?: string; duration?: number; aspect?: string; model?: string };
+  const b = (await req.json()) as { imageUrl?: string; prompt?: string; duration?: number; aspect?: string; model?: string; director?: string };
+  const director: DirectorId = isDirector(b.director) ? b.director : "sonnet";
   const prompt = (b.prompt ?? "").trim().slice(0, 1500);
   if (!b.imageUrl || !/^https:\/\//.test(b.imageUrl)) return NextResponse.json({ error: "Ajoute la photo de ton produit." }, { status: 400 });
-  if (prompt.length < 5) return NextResponse.json({ error: "Décris la vidéo que tu veux." }, { status: 400 });
 
   const currency = currencyOf(profile.country);
   const pricing = await loadPricing();
-  const q = await quote(b.model ?? "", Number(b.duration), b.aspect ?? "9:16", currency, pricing);
+  const q = await quote(b.model ?? "", Number(b.duration), b.aspect ?? "9:16", currency, pricing, director);
   if (!q) return NextResponse.json({ error: "Ce modèle ne propose pas cette durée ou ce format." }, { status: 400 });
 
   const db = adminClient().database;
   const videoId = crypto.randomUUID();
-  const label = `Vidéo ${q.style.name_fr} · ${b.duration} s · ${b.aspect}`;
+  const label = `Vidéo ${q.style.name_fr} · ${b.duration} s · ${b.aspect} · ${DIRECTORS[director].name}`;
   const free = profile.is_admin;
   if (!free) {
     const left = await walletApply(user.id, -q.price, "generation", label, videoId, currency);
@@ -58,10 +59,11 @@ export async function POST(req: Request) {
   }
   try {
     const { data: st } = await db.from("styles").select(STYLE_COLS).eq("id", q.style.id).limit(1);
-    const finalPrompt = await renderPrompt(prompt, Number(b.duration), b.aspect ?? "9:16");
-    const jobId = await startVideoJob(st![0] as StyleRow, finalPrompt, Number(b.duration), { startImage: b.imageUrl, aspect: b.aspect });
-    await db.from("videos").update({ apiframe_task_id: jobId, status: "processing" }).eq("id", videoId);
-    return NextResponse.json({ videoId });
+    const row = st![0] as StyleRow;
+    const ad = await directAd({ director, image: await direct(b.imageUrl), request: prompt, duration: Number(b.duration), aspect: b.aspect ?? "9:16", endpoint: row.hf_endpoint ?? null });
+    const jobId = await startVideoJob(row, ad.prompt, Number(b.duration), { startImage: b.imageUrl, aspect: b.aspect });
+    await db.from("videos").update({ apiframe_task_id: jobId, status: "processing", prompt: prompt || `Style ${ad.style} (choisi par ${DIRECTORS[director].name})` }).eq("id", videoId);
+    return NextResponse.json({ videoId, style: ad.style, director: DIRECTORS[director].name });
   } catch (e) {
     await db.from("videos").update({ status: "failed", error: String(e).slice(0, 500) }).eq("id", videoId);
     if (!free) await walletApply(user.id, q.price, "refund", `Remboursement · ${label}`, videoId, currency);
