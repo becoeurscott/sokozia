@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { badRequest, notFound, readJson, requireUser, route } from "@/lib/api";
 import { getDb, now } from "@/lib/db";
 import type { BriefContent, Generation, Message, Thread } from "@/lib/types";
-import { isDuration, isStyle } from "@/lib/models";
+import { isDuration, isStyle, supports, STYLES } from "@/lib/models";
 import { getActor } from "@/lib/actors";
 import { createGeneration, publicGeneration } from "@/lib/services/generations";
 import { createOrder } from "@/lib/services/orders";
@@ -26,14 +26,15 @@ interface Body {
 }
 
 /**
- * "Créer la vidéo": creates the generation from a brief message. Returns
- * either the running generation (paid with a credit) or a checkout URL.
+ * "Créer la vidéo": creates the generation from a brief message and opens
+ * a Mobile Money checkout for it (pay-per-video).
  */
 export const POST = route(async (req: NextRequest) => {
   const user = await requireUser();
   const body = await readJson<Body>(req);
   if (!isStyle(body.style)) badRequest("Style invalide.");
   if (!isDuration(body.duration)) badRequest("Durée invalide.");
+  if (!supports(body.style, body.duration)) badRequest(`${STYLES[body.style].name} n'existe pas en ${body.duration} s.`);
   const actor = getActor(body.actorId);
   if (!actor) badRequest("Créateur invalide.");
   const script = String(body.script ?? "").trim();
@@ -46,7 +47,7 @@ export const POST = route(async (req: NextRequest) => {
   if (!thread) notFound("Conversation introuvable.");
   const brief = msg.content as unknown as BriefContent;
 
-  const { generation, paid } = await createGeneration({
+  const generation = await createGeneration({
     userId: user.id,
     threadId: thread.id,
     briefMessage: msg,
@@ -66,13 +67,11 @@ export const POST = route(async (req: NextRequest) => {
     user_id: user.id,
     role: "assistant",
     kind: "video",
-    content: { generationId: generation.id, text: paid ? "C'est parti ! Je tourne ta vidéo." : "Ta vidéo est prête à partir dès que le paiement est confirmé." },
+    content: { generationId: generation.id, text: "Ta vidéo part dès que le paiement Mobile Money est confirmé." },
     created_at: now(),
   });
   await db.update<Thread>("threads", thread.id, { updated_at: now() });
 
-  if (paid) return NextResponse.json({ generation: publicGeneration(generation), message: videoMsg, paid: true });
-
-  const { redirectUrl } = await createOrder({ user, kind: "single", style: body.style, duration: body.duration, generationId: generation.id, threadId: thread.id });
-  return NextResponse.json({ generation: publicGeneration(generation), message: videoMsg, paid: false, redirectUrl });
+  const { redirectUrl } = await createOrder({ user, generation });
+  return NextResponse.json({ generation: publicGeneration(generation), message: videoMsg, redirectUrl });
 });

@@ -14,6 +14,6 @@ export const POST = route(async (req: NextRequest) => {
   const g = body.generationId ? await db.get<Generation>("generations", body.generationId) : null;
   if (!g || g.user_id !== user.id) notFound("Vidéo introuvable.");
   if (g.status !== "awaiting_payment") badRequest("Cette vidéo est déjà payée.");
-  const { redirectUrl } = await createOrder({ user, kind: "single", style: g.style, duration: g.duration, generationId: g.id, threadId: g.thread_id });
+  const { redirectUrl } = await createOrder({ user, generation: g });
   return NextResponse.json({ redirectUrl });
 });

@@ -1,6 +1,6 @@
 import "server-only";
 import { ACTORS, getActor, suggestActor, type Actor } from "../actors";
-import { DURATIONS, STYLES, isStyle, type Duration, type Style } from "../models";
+import { STYLES, clampDuration, durationsFor, isStyle, type Duration, type Style } from "../models";
 import type { BriefContent } from "../types";
 import { isInsForgeConfigured } from "../db";
 
@@ -28,8 +28,8 @@ export async function buildBrief(input: BriefInput): Promise<BriefContent> {
 
   const product = extractProduct(text, prev?.product);
   const actor = pickActor(input, text, prev, product);
-  const duration = pickDuration(input, text, prev);
   const style = pickStyle(input, text, prev);
+  const duration = pickDuration(input, text, prev, style);
   const scene = extractScene(text, actor, prev?.scene);
 
   let script = templateScript({ product, actor, duration, text, scene });
@@ -58,8 +58,12 @@ export async function buildBrief(input: BriefInput): Promise<BriefContent> {
 /* ------------------------------------------------------------------ */
 
 function extractProduct(text: string, previous?: string): string {
+  // Follow-ups ("fais-la en 30 secondes", "change de créateur") refine the
+  // brief; they don't name a new product.
+  if (previous) return previous;
   const cleaned = text
     .replace(/https?:\/\/\S+/g, "")
+    .replace(/\b\d{1,2}\s*(s|sec|secondes?)\b/gi, " ")
     .replace(/\b(je veux|je voudrais|fais|faire|crée|cree|créer|une pub|une vidéo|une video|pour|promo|promouvoir|mon|ma|mes|le|la|les|un|une|de|du|des)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -81,15 +85,15 @@ function pickActor(input: BriefInput, text: string, prev: BriefContent | null, p
   return suggestActor(text + " " + product);
 }
 
-function pickDuration(input: BriefInput, text: string, prev: BriefContent | null): Duration {
-  if (input.duration && DURATIONS.includes(input.duration)) return input.duration;
+function pickDuration(input: BriefInput, text: string, prev: BriefContent | null, style: Style): Duration {
+  const allowed = durationsFor(style);
+  if (input.duration && allowed.includes(input.duration)) return input.duration;
   const m = text.match(/(\d{1,2})\s*(s|sec|secondes?)\b/i);
   if (m) {
     const n = Number(m[1]);
-    const closest = DURATIONS.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a));
-    return closest;
+    return allowed.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a));
   }
-  return prev?.duration ?? 15;
+  return clampDuration(style, prev?.duration ?? 15);
 }
 
 function pickStyle(input: BriefInput, text: string, prev: BriefContent | null): Style {
@@ -100,6 +104,8 @@ function pickStyle(input: BriefInput, text: string, prev: BriefContent | null): 
     if (new RegExp(`\\b${n}\\b`).test(t)) return s.id;
   }
   if (/moins cher|economique|pas cher/.test(t)) return "eclair";
+  // Only Éclair goes past 15 s.
+  if (/\b(1[6-9]|2\d|30)\s*(s|sec|secondes?)\b/.test(t)) return "eclair";
   if (/realiste|le plus beau|haut de gamme/.test(t)) return "signature";
   return prev?.style ?? "naturel";
 }
@@ -140,8 +146,10 @@ function templateScript(p: { product: string; actor: Actor; duration: Duration; 
   const body = `Je l'ai testé moi-même : la qualité est là, et c'est livré partout.`;
   const proof = `Franchement, je recommande les yeux fermés.`;
   const cta = `Commandez maintenant sur WhatsApp, le lien est en bio.`;
-  if (p.duration === 8) return `${hook} ${cta}`;
-  if (p.duration === 15) return `${hook} ${body} ${cta}`;
+  if (p.duration <= 5) return `${hook} ${cta}`;
+  if (p.duration <= 10) return `${hook} Livré partout. ${cta}`;
+  if (p.duration <= 15) return `${hook} ${body} ${cta}`;
+  if (p.duration <= 20) return `${hook} ${body} ${proof} ${cta}`;
   return `${hook} ${body} ${proof} Et pour les premiers, une petite surprise à la livraison. ${cta}`;
 }
 
@@ -156,7 +164,7 @@ async function polishWithModel(p: {
   if (!isInsForgeConfigured()) return null;
   try {
     const { getAdminClient } = await import("../insforge/server");
-    const words = p.duration === 8 ? "20 à 25" : p.duration === 15 ? "38 à 45" : "75 à 85";
+    const words = `${Math.round(p.duration * 2.3)} à ${Math.round(p.duration * 2.8)}`;
     const completion = await Promise.race([
       getAdminClient().ai.chat.completions.create({
         model: process.env.INSFORGE_SCRIPT_MODEL || "anthropic/claude-sonnet-4.5",

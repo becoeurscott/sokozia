@@ -9,6 +9,14 @@ import { appUrl } from "../auth";
 export const SAMPLE_VIDEO = "/samples/sample.mp4";
 export const SAMPLE_POSTER = "/samples/sample.jpg";
 
+/**
+ * Orders whose first attempt already failed in this process. A product
+ * containing "échec" fails once, so the free retry can be tested.
+ */
+// Shared across route bundles (each Next.js route has its own module copy in dev).
+const g = globalThis as unknown as { __sokoziaFailedOnce?: Set<string> };
+const failedOnce = (g.__sokoziaFailedOnce ??= new Set<string>());
+
 export const mockVideo: VideoProvider = {
   name: "mock",
   async submit({ generation }) {
@@ -17,8 +25,15 @@ export const mockVideo: VideoProvider = {
   async check(generation): Promise<CheckResult> {
     const started = generation.started_at ? Date.parse(generation.started_at) : Date.now();
     const elapsed = (Date.now() - started) / 1000;
-    if (/échec|echec|fail/i.test(generation.product)) {
-      return elapsed > 4 ? { status: "failed", error: "Le modèle a refusé cette demande (test)." } : { status: "in_progress" };
+    const key = generation.order_id ?? generation.id;
+    const firstAttempt = !failedOnce.has(key) || failedOnce.has(`${key}:${generation.id}`);
+    if (/échec|echec|fail/i.test(generation.product) && firstAttempt) {
+      if (elapsed > 4) {
+        failedOnce.add(key);
+        failedOnce.add(`${key}:${generation.id}`);
+        return { status: "failed", error: "Le modèle a refusé cette demande (test)." };
+      }
+      return { status: "in_progress" };
     }
     if (elapsed < 2) return { status: "queued" };
     if (elapsed < 9) return { status: "in_progress" };

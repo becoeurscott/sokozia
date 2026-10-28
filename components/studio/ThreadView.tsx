@@ -28,6 +28,7 @@ export function ThreadView({ threadId }: { threadId: string }) {
   const [draft, setDraft] = React.useState<Draft>(EMPTY_DRAFT);
   const [sending, setSending] = React.useState(false);
   const [launching, setLaunching] = React.useState<string | null>(null);
+  const [retrying, setRetrying] = React.useState<string | null>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
   const load = React.useCallback(async () => {
@@ -59,7 +60,6 @@ export function ThreadView({ threadId }: { threadId: string }) {
           const { generation } = await api<{ generation: Pub }>(`/api/generations/${id}`);
           if (stop) return;
           setData((d) => (d ? { ...d, generations: d.generations.map((g) => (g.id === id ? generation : g)) } : d));
-          if (generation.status === "completed" || generation.status === "failed") studio.refreshMe();
         } catch {
           /* retry next tick */
         }
@@ -97,7 +97,7 @@ export function ThreadView({ threadId }: { threadId: string }) {
   async function launch(message: Message, input: LaunchInput) {
     setLaunching(message.id);
     try {
-      const res = await api<{ generation: Pub; message: Message; paid: boolean; redirectUrl?: string }>("/api/generations", {
+      const res = await api<{ generation: Pub; message: Message; redirectUrl: string }>("/api/generations", {
         method: "POST",
         json: { messageId: message.id, ...input },
       });
@@ -110,15 +110,24 @@ export function ThreadView({ threadId }: { threadId: string }) {
             }
           : cur,
       );
-      studio.refreshMe();
-      if (!res.paid && res.redirectUrl) {
-        window.location.href = res.redirectUrl;
-        return;
-      }
+      window.location.href = res.redirectUrl;
+      return;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
     } finally {
       setLaunching(null);
+    }
+  }
+
+  async function retry(g: Pub) {
+    setRetrying(g.id);
+    try {
+      const res = await api<{ generation: Pub; message: Message }>(`/api/generations/${g.id}/retry`, { method: "POST" });
+      setData((cur) => (cur ? { ...cur, messages: [...cur.messages, res.message], generations: [...cur.generations, res.generation] } : cur));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setRetrying(null);
     }
   }
 
@@ -149,6 +158,11 @@ export function ThreadView({ threadId }: { threadId: string }) {
   }
 
   const gens = new Map(data.generations.map((g) => [g.id, g]));
+  // A failed attempt can be retried only if no later attempt exists on the same order.
+  const retriedOrders = new Set<string>();
+  const byOrder = new Map<string, Pub[]>();
+  for (const g of data.generations) if (g.order_id) byOrder.set(g.order_id, [...(byOrder.get(g.order_id) ?? []), g]);
+  for (const [orderId, list] of byOrder) list.slice(0, -1).forEach((g) => retriedOrders.add(orderId + ":" + g.id));
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -177,7 +191,7 @@ export function ThreadView({ threadId }: { threadId: string }) {
               return (
                 <div key={m.id} className="flex items-start gap-3">
                   <Awa />
-                  <BriefCard brief={brief} credits={studio.credits} busy={launching === m.id} locked={Boolean(brief.generationId)} onLaunch={(input) => launch(m, input)} />
+                  <BriefCard brief={brief} busy={launching === m.id} locked={Boolean(brief.generationId)} onLaunch={(input) => launch(m, input)} />
                 </div>
               );
             }
@@ -192,8 +206,10 @@ export function ThreadView({ threadId }: { threadId: string }) {
                     {g ? (
                       <VideoCard
                         generation={g}
+                        retrying={retrying === g.id}
                         onPay={() => pay(g)}
-                        onRetry={() => setDraft({ ...EMPTY_DRAFT, text: g.status === "completed" ? "Refais une variante de cette vidéo avec une accroche différente" : "Réessaie la même vidéo" })}
+                        onRetry={g.order_id && !retriedOrders.has(g.order_id + ":" + g.id) ? () => retry(g) : undefined}
+                        onRemake={() => setDraft({ ...EMPTY_DRAFT, text: "Refais une variante de cette vidéo avec une accroche différente" })}
                       />
                     ) : null}
                   </div>

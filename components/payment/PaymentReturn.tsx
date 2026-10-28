@@ -45,7 +45,7 @@ export function PaymentReturn() {
 
   React.useEffect(() => {
     if (order?.status !== "completed") return;
-    const t = setTimeout(() => router.replace(order.thread_id ? `/studio/c/${order.thread_id}` : "/studio/modeles"), 1500);
+    const t = setTimeout(() => router.replace(order.thread_id ? `/studio/c/${order.thread_id}` : "/studio"), 1500);
     return () => clearTimeout(t);
   }, [order, router]);
 
@@ -85,8 +85,8 @@ export function PaymentReturn() {
               <Check className="h-6 w-6" />
             </span>
             <h1 className="mt-3 text-xl font-extrabold">Paiement confirmé</h1>
-            <p className="mt-1 text-sm text-muted">{order.kind === "single" ? "Ta vidéo est en cours de création." : "Tes crédits sont disponibles."}</p>
-            <Button href={order.thread_id ? `/studio/c/${order.thread_id}` : "/studio/modeles"} className="mt-6">
+            <p className="mt-1 text-sm text-muted">Ta vidéo est en cours de création.</p>
+            <Button href={dest} className="mt-6">
               Continuer
             </Button>
           </>

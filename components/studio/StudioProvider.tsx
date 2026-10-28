@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
-import type { Credit, Thread, User } from "@/lib/types";
+import type { Thread, User } from "@/lib/types";
 
 export type DialogName = "auth" | "library" | "docs" | "actors" | null;
 
@@ -18,7 +18,6 @@ export const EMPTY_DRAFT: Draft = { text: "", imageUrl: null, imageName: null, a
 
 interface StudioState {
   user: User | null;
-  credits: Credit[];
   threads: Thread[];
   ready: boolean;
   dialog: DialogName;
@@ -51,7 +50,6 @@ export function useStudio(): StudioState {
 export function StudioProvider({ initialUser, children }: { initialUser: User | null; children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = React.useState<User | null>(initialUser);
-  const [credits, setCredits] = React.useState<Credit[]>([]);
   const [threads, setThreads] = React.useState<Thread[]>([]);
   const [ready, setReady] = React.useState(false);
   const [dialog, setDialog] = React.useState<DialogName>(null);
@@ -64,9 +62,8 @@ export function StudioProvider({ initialUser, children }: { initialUser: User | 
 
   const refreshMe = React.useCallback(async () => {
     try {
-      const data = await api<{ user: User | null; credits: Credit[] }>("/api/auth/me");
+      const data = await api<{ user: User | null }>("/api/auth/me");
       setUser(data.user);
-      setCredits(data.credits ?? []);
       return data.user;
     } catch {
       return null;
@@ -122,7 +119,6 @@ export function StudioProvider({ initialUser, children }: { initialUser: User | 
   const signOut = React.useCallback(async () => {
     await api("/api/auth/logout", { method: "POST" });
     setUser(null);
-    setCredits([]);
     setThreads([]);
     router.push("/studio");
     router.refresh();
@@ -130,7 +126,6 @@ export function StudioProvider({ initialUser, children }: { initialUser: User | 
 
   const value: StudioState = {
     user,
-    credits,
     threads,
     ready,
     dialog,

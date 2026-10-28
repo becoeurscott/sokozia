@@ -1,5 +1,4 @@
 import type { Style, Duration } from "./models";
-import type { PackKind } from "./pricing";
 
 export interface User {
   id: string;
@@ -68,7 +67,6 @@ export interface Generation {
   video_url: string | null;
   poster_url: string | null;
   error: string | null;
-  credit_id: string | null;
   order_id: string | null;
   price: number;
   created_at: string;
@@ -83,9 +81,8 @@ export type OrderStatus = "pending" | "completed" | "failed" | "expired";
 export interface Order {
   id: string;
   user_id: string;
-  kind: PackKind;
   style: Style;
-  duration: Duration | null;
+  duration: Duration;
   amount: number;
   currency: string;
   country: string | null;
@@ -99,17 +96,6 @@ export interface Order {
   raw: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
-}
-
-export interface Credit {
-  id: string;
-  user_id: string;
-  order_id: string | null;
-  style: Style;
-  total: number;
-  remaining: number;
-  expires_at: string | null;
-  created_at: string;
 }
 
 export interface Upload {

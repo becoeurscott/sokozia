@@ -2,13 +2,12 @@ import "server-only";
 import { getDb, now } from "../db";
 import { getActor } from "../actors";
 import { videoPrice, type Duration, type Style } from "../models";
-import type { BriefContent, Generation, Message } from "../types";
+import type { BriefContent, Generation, Message, Order } from "../types";
 import { videoProvider } from "../providers";
 import type { CheckResult } from "../providers/types";
 import { buildVideoPrompt } from "../agent/brief";
 import { appUrl } from "../auth";
 import { copyRemote } from "../storage";
-import { consumeCredit, findUsableCredit, refundCredit } from "./credits";
 import { SAMPLE_POSTER } from "../providers/mock";
 
 const TERMINAL: Generation["status"][] = ["completed", "failed", "nsfw"];
@@ -29,16 +28,16 @@ export interface CreateInput {
 }
 
 /**
- * Creates the generation row. If a credit covers it, the job is submitted
- * right away; otherwise it waits for payment (status awaiting_payment).
+ * Creates the generation row, waiting for payment. The caller then opens a
+ * checkout for it (pay-per-video).
  */
-export async function createGeneration(input: CreateInput): Promise<{ generation: Generation; paid: boolean }> {
+export async function createGeneration(input: CreateInput): Promise<Generation> {
   const db = await getDb();
   const actor = getActor(input.actorId) ?? getActor(input.brief.actorId)!;
   const prompt = buildVideoPrompt({ ...input.brief, script: input.script, duration: input.duration }, actor);
   const price = videoPrice(input.style, input.duration);
 
-  const generation = await db.insert<Generation>("generations", {
+  return db.insert<Generation>("generations", {
     user_id: input.userId,
     thread_id: input.threadId,
     message_id: input.briefMessage.id,
@@ -56,7 +55,6 @@ export async function createGeneration(input: CreateInput): Promise<{ generation
     video_url: null,
     poster_url: null,
     error: null,
-    credit_id: null,
     order_id: null,
     price,
     created_at: now(),
@@ -65,17 +63,32 @@ export async function createGeneration(input: CreateInput): Promise<{ generation
     completed_at: null,
     last_checked_at: null,
   });
+}
 
-  const credit = await findUsableCredit(input.userId, input.style);
-  if (credit) {
-    const used = await consumeCredit(credit);
-    if (used) {
-      const g = await db.update<Generation>("generations", generation.id, { credit_id: credit.id });
-      const started = await submitGeneration(g ?? generation);
-      return { generation: started, paid: true };
-    }
-  }
-  return { generation, paid: false };
+/**
+ * Free retry for a paid video that failed: a fresh generation row (new
+ * idempotency key) attached to the same paid order, submitted right away.
+ */
+export async function retryFailedGeneration(failed: Generation): Promise<Generation> {
+  const db = await getDb();
+  const retry = await db.insert<Generation>("generations", {
+    ...failed,
+    id: undefined as unknown as string,
+    provider: videoProvider().name,
+    provider_request_id: null,
+    provider_status_url: null,
+    status: "awaiting_payment",
+    video_url: null,
+    poster_url: null,
+    error: null,
+    created_at: now(),
+    updated_at: now(),
+    started_at: null,
+    completed_at: null,
+    last_checked_at: null,
+  });
+  if (failed.order_id) await db.update<Order>("orders", failed.order_id, { generation_id: retry.id, updated_at: now() });
+  return submitGeneration(retry);
 }
 
 /** Sends the job to the video provider. Safe to call once per generation. */
@@ -164,7 +177,6 @@ async function completeGeneration(generation: Generation, providerUrl: string): 
 
 async function failGeneration(generation: Generation, error: string, status: "failed" | "nsfw" = "failed"): Promise<Generation | null> {
   const db = await getDb();
-  if (generation.credit_id) await refundCredit(generation.credit_id);
   return db.update<Generation>("generations", generation.id, { status, error, updated_at: now(), completed_at: now() });
 }
 

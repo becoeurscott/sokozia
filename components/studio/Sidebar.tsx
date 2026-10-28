@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SquarePen, Library, Boxes, BookOpen, UserRoundPlus, LogIn, PanelLeftClose, PanelRightOpen, X, LogOut, Wallet } from "lucide-react";
+import { SquarePen, Library, Boxes, BookOpen, UserRoundPlus, LogIn, PanelLeftClose, PanelRightOpen, X, LogOut } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { useStudio } from "./StudioProvider";
 
 export function Sidebar() {
   const studio = useStudio();
   const pathname = usePathname();
-  const { collapsed, setCollapsed, sidebarOpen, setSidebarOpen, user, threads, credits } = studio;
-  const totalCredits = credits.reduce((n, c) => n + c.remaining, 0);
+  const { collapsed, setCollapsed, sidebarOpen, setSidebarOpen, user, threads } = studio;
 
   const item = (active: boolean) =>
     `group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition ${active ? "bg-hover text-ink" : "text-ink/80 hover:bg-hover hover:text-ink"} ${collapsed ? "justify-center px-0" : ""}`;
@@ -77,9 +76,7 @@ export function Sidebar() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-soft text-sm font-bold text-brand">{(user.name || user.email).charAt(0).toUpperCase()}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{user.name || user.email}</span>
-                  <span className="flex items-center gap-1 text-xs text-muted">
-                    <Wallet className="h-3 w-3" /> {totalCredits} crédit{totalCredits > 1 ? "s" : ""}
-                  </span>
+                  <span className="block text-xs text-muted">Mon compte · paiements</span>
                 </span>
               </Link>
             )}

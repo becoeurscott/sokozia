@@ -40,7 +40,7 @@ create table if not exists public.generations (
   thread_id uuid not null references public.threads (id) on delete cascade,
   message_id uuid,
   style text not null check (style in ('eclair', 'naturel', 'studio', 'signature')),
-  duration int not null check (duration in (8, 15, 30)),
+  duration int not null check (duration in (5, 10, 15, 20, 30)),
   actor_id text not null,
   product text not null,
   product_image_url text,
@@ -54,7 +54,6 @@ create table if not exists public.generations (
   video_url text,
   poster_url text,
   error text,
-  credit_id uuid,
   order_id uuid,
   price int not null,
   created_at timestamptz not null default now(),
@@ -67,12 +66,12 @@ create index if not exists generations_user_created on public.generations (user_
 create index if not exists generations_thread on public.generations (thread_id);
 create unique index if not exists generations_provider_request on public.generations (provider_request_id) where provider_request_id is not null;
 
+-- One order pays exactly one generation (pay-per-video).
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null,
-  kind text not null check (kind in ('single', 'pack5', 'monthly')),
   style text not null,
-  duration int,
+  duration int not null,
   amount int not null,
   currency text not null default 'XAF',
   country text,
@@ -88,18 +87,6 @@ create table if not exists public.orders (
   updated_at timestamptz not null default now()
 );
 create index if not exists orders_user_created on public.orders (user_id, created_at desc);
-
-create table if not exists public.credits (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null,
-  order_id uuid,
-  style text not null,
-  total int not null,
-  remaining int not null,
-  expires_at timestamptz,
-  created_at timestamptz not null default now()
-);
-create index if not exists credits_user on public.credits (user_id);
 
 create table if not exists public.uploads (
   id uuid primary key default gen_random_uuid(),
@@ -127,7 +114,6 @@ alter table public.threads enable row level security;
 alter table public.messages enable row level security;
 alter table public.generations enable row level security;
 alter table public.orders enable row level security;
-alter table public.credits enable row level security;
 alter table public.uploads enable row level security;
 alter table public.webhook_events enable row level security;
 
@@ -136,7 +122,6 @@ create policy "own threads" on public.threads for select to authenticated using 
 create policy "own messages" on public.messages for select to authenticated using (user_id = auth.uid());
 create policy "own generations" on public.generations for select to authenticated using (user_id = auth.uid());
 create policy "own orders" on public.orders for select to authenticated using (user_id = auth.uid());
-create policy "own credits" on public.credits for select to authenticated using (user_id = auth.uid());
 create policy "own uploads" on public.uploads for select to authenticated using (user_id = auth.uid());
 -- webhook_events: admin key only (no policies).
 

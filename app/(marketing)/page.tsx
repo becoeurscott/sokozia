@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, MessageCircle, Users, Clapperboard, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ACTORS } from "@/lib/actors";
-import { STYLE_ORDER, STYLES, formatFcfa } from "@/lib/models";
+import { STYLE_ORDER, STYLES, durationsFor, formatFcfa, fromPrice, lowestPrice } from "@/lib/models";
 import { ActorAvatar } from "@/components/ui/ActorAvatar";
 
 export default function LandingPage() {
@@ -29,7 +29,7 @@ export default function LandingPage() {
             </Button>
           </div>
           <p className="mt-4 text-sm text-muted">
-            À partir de <b className="text-ink">{formatFcfa(STYLES.eclair.basePrice)}</b> la vidéo · Inscription gratuite
+            À partir de <b className="text-ink">{formatFcfa(lowestPrice())}</b> la vidéo · Tu payes chaque vidéo, sans abonnement
           </p>
         </div>
 
@@ -71,7 +71,7 @@ export default function LandingPage() {
       <section className="border-y border-line bg-card">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-10 text-center md:grid-cols-4">
           {[
-            ["8–30 s", "de vraies pubs"],
+            ["5–30 s", "de vraies pubs"],
             ["9:16", "format TikTok / Reels"],
             ["0", "acteur à payer"],
             ["0 FCFA", "si la pub échoue"],
@@ -92,7 +92,7 @@ export default function LandingPage() {
           {[
             [MessageCircle, "Parle de ton produit", "Décris-le, colle un lien, envoie tes photos. Awa prépare le brief en quelques secondes."],
             [Users, "Choisis ton créateur et le lieu", "16 créateurs africains. Boutique, marché, salon… le créateur garde le même visage dans toutes tes pubs."],
-            [Clapperboard, "Valide le script et crée", "8, 15 ou 30 secondes. Choisis le style, le prix s'affiche avant de payer. La vidéo apparaît dans la conversation."],
+            [Clapperboard, "Valide le script et crée", "De 5 à 30 secondes. Choisis le style, le prix s'affiche avant de payer. La vidéo apparaît dans la conversation."],
           ].map(([Icon, t, d], i) => {
             const I = Icon as typeof MessageCircle;
             return (
@@ -149,8 +149,8 @@ export default function LandingPage() {
               </div>
               <p className="mt-2 min-h-[60px] text-sm text-muted">{STYLES[s].description}</p>
               <div className="mt-4 text-xs text-muted">dès</div>
-              <div className="text-2xl font-extrabold text-brand">{formatFcfa(STYLES[s].basePrice)}</div>
-              <div className="text-xs text-muted">par pub de {STYLES[s].flat ? "15 ou 30" : "15"} s</div>
+              <div className="text-2xl font-extrabold text-brand">{formatFcfa(fromPrice(s))}</div>
+              <div className="text-xs text-muted">la pub de {durationsFor(s)[0]} s · jusqu&apos;à {durationsFor(s).slice(-1)[0]} s</div>
             </div>
           ))}
         </div>
@@ -176,7 +176,7 @@ export default function LandingPage() {
               </thead>
               <tbody className="divide-y divide-line">
                 {[
-                  ["Prix d'une vidéo", "50 000 – 200 000 FCFA", `dès ${formatFcfa(STYLES.eclair.basePrice)}`],
+                  ["Prix d'une vidéo", "50 000 – 200 000 FCFA", `dès ${formatFcfa(lowestPrice())}`],
                   ["Délai", "1 à 2 semaines", "Quelques minutes"],
                   ["Acteur, matériel, lieu", "À trouver et payer", "Inclus"],
                   ["Changer le message", "Tout refaire", "Une phrase à Awa"],
@@ -197,7 +197,7 @@ export default function LandingPage() {
       <section className="mx-auto max-w-6xl px-4 py-20 text-center">
         <ShieldCheck className="mx-auto h-8 w-8 text-accent" />
         <h2 className="mt-3 text-3xl font-extrabold md:text-4xl">Ta première pub en quelques minutes</h2>
-        <p className="mt-2 text-muted">Inscription gratuite. Tu payes seulement ce que tu crées.</p>
+        <p className="mt-2 text-muted">Inscription gratuite. Tu payes chaque vidéo par Mobile Money, rien d&apos;autre.</p>
         <Button href="/studio" size="lg" className="mt-6">
           Commencer maintenant <ArrowRight className="h-4 w-4" />
         </Button>

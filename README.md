@@ -2,7 +2,8 @@
 
 Studio de vidéos pub UGC par IA, pour les commerces d'Afrique francophone.
 Chat-style studio (une seule boîte de prompt, "Créer la vidéo"), 16 créateurs
-africains, 4 styles, paiement Mobile Money.
+africains, 4 styles. Paiement à la vidéo par Mobile Money : pas de pack,
+pas d'abonnement, pas de solde.
 
 - **Front / API** : Next.js 15 (App Router), Tailwind 4, lucide-react
 - **Auth, base, fichiers** : [InsForge](https://insforge.dev) (`@insforge/sdk`)
@@ -22,7 +23,8 @@ Ouvre http://localhost:3000/studio. Sans InsForge configuré, les données vont
 dans `.data/db.json` et les fichiers dans `.data/files/`. Le paiement passe par
 un simulateur (`/paiement/simulateur`) et la vidéo est un extrait de démo
 rendu en ~10 s. Tout le parcours (inscription → brief → paiement → vidéo →
-bibliothèque → crédits) fonctionne ainsi.
+bibliothèque) fonctionne ainsi. Écris « échec » dans le prompt pour tester une
+vidéo qui échoue et sa relance gratuite.
 
 ## Mettre en place InsForge
 
@@ -62,10 +64,12 @@ Le mapping style → modèle est dans `lib/models.ts` (`STYLES[*].higgsfield`).
 Flux : `POST /v2/checkouts` → redirection vers la page pawaPay → retour sur
 `/paiement/retour?order=…` qui sonde `/api/orders/:id` ; le callback et la
 sonde sont tous deux idempotents (table `webhook_events`). Seule la première
-transition vers `completed` crée les crédits / lance la vidéo.
+transition vers `completed` lance la vidéo. Une vidéo payée qui échoue peut
+être relancée sans frais sur la même commande (`/api/generations/:id/retry`).
 
-Prix et conversion par pays : `lib/pricing.ts` (XAF/XOF à parité, table fixe
-pour KES, NGN, CDF, GHS).
+Prix par style et par durée : `lib/models.ts` (`STYLES[*].prices`, calqués sur
+sokozia.com/tarifs). Conversion par pays : `lib/pricing.ts` (XAF/XOF à
+parité, table fixe pour KES, NGN, CDF, GHS).
 
 ## Déployer sur Hostinger
 
@@ -84,12 +88,12 @@ app/(marketing)      landing, /tarifs
 app/(studio)/studio  shell chat (Nouvel agent, conversation, modèles)
 app/api              auth, threads, generations, orders, uploads, webhooks
 components/studio    Sidebar, Composer, BriefCard, VideoCard, dialogs…
-lib/models.ts        4 styles, prix, modèle Higgsfield par style
-lib/pricing.ts       packs, devises pawaPay
+lib/models.ts        4 styles, prix par durée, modèle Higgsfield par style
+lib/pricing.ts       devises pawaPay par pays
 lib/actors.ts        16 créateurs
 lib/agent/brief.ts   Awa : brief + script
 lib/providers/*      higgsfield.ts, pawapay.ts, mock.ts
-lib/services/*       generations, orders, credits
+lib/services/*       generations, orders
 lib/db/*             InsForge ou store JSON local
 insforge/migrations  schéma SQL
 scripts/seed-actors  portraits des créateurs

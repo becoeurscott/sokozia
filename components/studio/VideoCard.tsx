@@ -15,7 +15,21 @@ const STEPS: Array<{ key: Generation["status"]; label: string }> = [
   { key: "completed", label: "Prête" },
 ];
 
-export function VideoCard({ generation: g, onRetry, onPay }: { generation: Pub; onRetry?: () => void; onPay?: () => void }) {
+export function VideoCard({
+  generation: g,
+  onRetry,
+  onRemake,
+  onPay,
+  retrying,
+}: {
+  generation: Pub;
+  /** Free relaunch of a paid video that failed. */
+  onRetry?: () => void;
+  /** New (paid) variant of a finished video. */
+  onRemake?: () => void;
+  onPay?: () => void;
+  retrying?: boolean;
+}) {
   const [elapsed, setElapsed] = React.useState(0);
   const actor = getActor(g.actor_id);
   const running = g.status === "queued" || g.status === "in_progress";
@@ -124,8 +138,8 @@ export function VideoCard({ generation: g, onRetry, onPay }: { generation: Pub; 
                 >
                   <Share2 className="h-4 w-4" /> Partager
                 </button>
-                {onRetry && (
-                  <button onClick={onRetry} className="flex h-10 items-center gap-2 rounded-pill px-3 text-sm font-semibold text-muted hover:bg-hover hover:text-ink">
+                {onRemake && (
+                  <button onClick={onRemake} className="flex h-10 items-center gap-2 rounded-pill px-3 text-sm font-semibold text-muted hover:bg-hover hover:text-ink">
                     <RefreshCw className="h-4 w-4" /> Refaire
                   </button>
                 )}
@@ -136,11 +150,15 @@ export function VideoCard({ generation: g, onRetry, onPay }: { generation: Pub; 
           {(g.status === "failed" || g.status === "nsfw") && (
             <>
               <p className="text-sm text-red-700">{g.error ?? "La génération a échoué."}</p>
-              <p className="mt-1 text-xs text-muted">Rien n&apos;est décompté : {g.credit_id ? "ton crédit a été remis." : "tu ne payes pas une pub qui échoue."}</p>
-              {onRetry && (
-                <button onClick={onRetry} className="mt-3 flex h-10 w-fit items-center gap-2 rounded-pill bg-brand px-4 text-sm font-semibold text-white hover:bg-[#d24f0a]">
-                  <RefreshCw className="h-4 w-4" /> Réessayer
-                </button>
+              {onRetry ? (
+                <>
+                  <p className="mt-1 text-xs text-muted">Tu as déjà payé cette vidéo : on la relance sans frais.</p>
+                  <button onClick={onRetry} disabled={retrying} className="mt-3 flex h-10 w-fit items-center gap-2 rounded-pill bg-brand px-4 text-sm font-semibold text-white hover:bg-[#d24f0a] disabled:opacity-60">
+                    {retrying ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Relancer gratuitement
+                  </button>
+                </>
+              ) : (
+                <p className="mt-1 text-xs text-muted">Cette tentative a déjà été relancée plus bas.</p>
               )}
             </>
           )}

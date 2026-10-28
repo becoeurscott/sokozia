@@ -51,8 +51,7 @@ interface CheckoutStatusResponse {
 
 /** 4–22 chars, letters/digits/spaces only. */
 function reason(order: Order): string {
-  const r = order.kind === "single" ? "Sokozia video" : order.kind === "pack5" ? "Sokozia pack 5" : "Sokozia mensuel";
-  return r.replace(/[^A-Za-z0-9 ]/g, "").slice(0, 22);
+  return `Sokozia video ${order.duration}s`.replace(/[^A-Za-z0-9 ]/g, "").slice(0, 22);
 }
 
 export const pawapayPayment: PaymentProvider = {
