@@ -1,0 +1,6 @@
+# Local test data and tooling, never part of a deployment.
+.data/
+public/uploads/
+.claude/
+.agents/
+*.mp4.tmp
