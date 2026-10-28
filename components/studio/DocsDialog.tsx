@@ -6,7 +6,7 @@ import { DURATIONS, MODEL, formatFcfa } from "@/lib/models";
 
 const FAQ: Array<[string, string]> = [
   ["Je dois savoir faire des vidéos ?", "Non. Tu décris ton produit comme sur WhatsApp. Awa (c'est Claude) écrit le script et la mise en scène, tu choisis le créateur et la durée, et Seedance 2.0 tourne la vidéo."],
-  ["Comment je paye ?", "Par Mobile Money : Orange Money, MTN MoMo, Moov, Wave, Airtel, M-Pesa. Tu payes chaque vidéo au moment de la créer : 1 600 FCFA les 15 s, 3 000 FCFA les 30 s. Pas d'abonnement."],
+  ["Comment je paye ?", `Par Mobile Money : Orange Money, MTN MoMo, Moov, Wave, Airtel, M-Pesa. Tu payes chaque vidéo au moment de la créer : ${formatFcfa(MODEL.prices[15])} les 15 s, ${formatFcfa(MODEL.prices[30])} les 30 s. Pas d'abonnement.`],
   ["Combien de temps ça prend ?", "Le brief est instantané. La vidéo prend 2 à 4 minutes, 30 s comprises : les deux scènes sont tournées en même temps. Tu peux fermer la page : elle t'attend dans la Bibliothèque."],
   ["Et si la vidéo ne marche pas ?", "Si une vidéo payée échoue, tu la relances gratuitement en un clic."],
   ["Je peux l'utiliser pour mes pubs ?", "Oui. Les vidéos sont à toi : TikTok, Reels, WhatsApp, Facebook, statut, boutique en ligne."],

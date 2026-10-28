@@ -35,7 +35,9 @@ export const MODEL: ModelSpec = {
   name: "Seedance 2.0",
   spec: "Vidéo verticale 9:16 · 720p · voix et son inclus",
   description: "Un créateur africain présente ton produit face caméra, en français, avec un script écrit par Claude.",
-  prices: { 15: 1600, 30: 3000 },
+  // 2× the Higgsfield list cost ($0.141/s ≈ 1 270 FCFA per 15 s at 600 FCFA/$),
+  // rounded to an even number.
+  prices: { 15: 2540, 30: 5080 },
   higgsfield: { path: "bytedance/seedance-2.0/reference-to-video", resolution: "720p" },
   eta: { 15: "2 à 3 min", 30: "3 à 4 min" },
 };

@@ -84,7 +84,8 @@ sonde sont tous deux idempotents (table `webhook_events`). Seule la première
 transition vers `completed` lance la vidéo. Une vidéo payée qui échoue peut
 être relancée sans frais sur la même commande (`/api/generations/:id/retry`).
 
-Prix : `lib/models.ts` (`MODEL.prices`) : 1 600 FCFA les 15 s, 3 000 FCFA les 30 s. Conversion par pays : `lib/pricing.ts` (XAF/XOF à
+Prix : `lib/models.ts` (`MODEL.prices`) : 2 540 FCFA les 15 s, 5 080 FCFA les 30 s
+(2× le coût Higgsfield au prix catalogue, arrondi à un nombre pair). Conversion par pays : `lib/pricing.ts` (XAF/XOF à
 parité, table fixe pour KES, NGN, CDF, GHS).
 
 ## Déployer sur Hostinger
