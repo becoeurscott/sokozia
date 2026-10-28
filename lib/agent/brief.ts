@@ -184,13 +184,13 @@ function directionPrompt(p: { product: string; actor: Actor; duration: Duration;
   return [
     `Produit : ${p.product}`,
     `Créateur : ${p.actor.name}, ${p.actor.country} (${p.actor.niche}, voix ${p.actor.voice}). Apparence : ${p.actor.look}.`,
-    `Durée : ${p.duration} secondes, soit ${clips} clip(s) de ${MAX_CLIP_SECONDS} s.`,
+    `Durée : ${p.duration} secondes, soit ${clips} clip(s) de ${MAX_CLIP_SECONDS} s. Le script fait environ ${Math.round(p.duration * 2.5)} mots, jamais plus de ${Math.round(p.duration * 2.8)} : au-delà, le créateur parle trop vite.`,
     `Lieu suggéré : ${p.scene}`,
     p.hasPhoto ? "Le client a envoyé une photo du produit : le créateur doit le montrer clairement." : "Pas de photo du produit : le créateur en parle et le mime de façon crédible.",
     p.previous ? `Brief précédent à faire évoluer :\nScript : ${p.previous.script}\nLieu : ${p.previous.scene}` : null,
     `Demande du client : ${p.text}`,
     "",
-    `Réponds avec le script, le lieu et ${clips} plan(s).`,
+    `Réponds avec le script et le lieu en français (le lieu en quelques mots, sans décrire la personne), et ${clips} plan(s) en anglais.`,
   ]
     .filter((l) => l !== null)
     .join("\n");
@@ -243,7 +243,7 @@ async function directWithGateway(p: Parameters<typeof direct>[0], clips: number)
       model: process.env.INSFORGE_SCRIPT_MODEL || "anthropic/claude-sonnet-4.5",
       maxTokens: 800,
       messages: [
-        { role: "system", content: `${DIRECTOR_SYSTEM}\n\nRéponds uniquement en JSON valide : {"script": "...", "scene": "...", "shots": [${clips} chaîne(s)]}.` },
+        { role: "system", content: `${DIRECTOR_SYSTEM}\n\nRéponds uniquement en JSON valide : {"script": "texte parlé en français", "scene": "lieu en quelques mots, en français", "shots": [${clips} plan(s) en anglais]}.` },
         { role: "user", content: directionPrompt(p) },
       ],
     }),
