@@ -20,7 +20,7 @@ export function DocsDialog() {
       <ol className="mb-6 space-y-3">
         {[
           ["Parle de ton produit", "Décris-le, colle un lien ou ajoute une photo. Awa, notre directrice de création, prépare un brief en quelques secondes."],
-          ["Choisis ton créateur et la durée", "26 créateurs africains. Choisis 15 ou 30 secondes : le prix s'affiche avant de payer."],
+          ["Choisis ton créateur et la durée", "36 créateurs africains. Choisis 15 ou 30 secondes : le prix s'affiche avant de payer."],
           ["Valide et crée", "Paye la vidéo par Mobile Money. Elle se tourne et apparaît directement dans la conversation."],
         ].map(([t, d], i) => (
           <li key={t} className="flex gap-3">
