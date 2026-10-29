@@ -23,7 +23,7 @@ export async function createOrder(input: { user: User; generation: Generation; c
     duration: g.duration,
     amount: g.price,
     // amount stays the FCFA price; the local amount charged is derived from it.
-    currency: provider.name === "stripe" ? "XOF" : localAmount(country, g.price).currency,
+    currency: provider.name === "stripe" ? "EUR" : localAmount(country, g.price).currency,
     country,
     provider: provider.name,
     checkout_code: null,

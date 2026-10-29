@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Sparkles, Pencil, Clock, CreditCard, Smartphone } from "lucide-react";
 import { ACTORS, getActor } from "@/lib/actors";
-import { DURATIONS, MODEL, closestDuration, formatFcfa, isDuration, videoPrice, type Duration } from "@/lib/models";
+import { DURATIONS, MODEL, cardPriceCents, closestDuration, formatEur, formatFcfa, isDuration, videoPrice, type Duration } from "@/lib/models";
 import { COUNTRY_CURRENCY, DEFAULT_COUNTRY, PAY_COUNTRIES, isPayCountry, localAmount } from "@/lib/pricing";
 import type { BriefContent } from "@/lib/types";
 import { ActorAvatar } from "@/components/ui/ActorAvatar";
@@ -46,8 +46,14 @@ export function BriefCard({
     setMethod(savedMethod());
   }, []);
   const local = localAmount(country, price);
-  // Cards are charged in FCFA (XOF) whatever the country.
-  const fcfa = method === "card" || local.currency === "XAF" || local.currency === "XOF";
+  const fcfa = local.currency === "XAF" || local.currency === "XOF";
+  // What the customer is charged with the chosen method (cards pay in euros).
+  const payLabel =
+    method === "card"
+      ? `${formatEur(cardPriceCents(duration))} (≈ ${formatFcfa(price)})`
+      : fcfa
+        ? formatFcfa(price)
+        : `${local.amount.toLocaleString("fr-FR")} ${local.currency} (≈ ${formatFcfa(price)})`;
 
   function chooseCountry(c: string) {
     setCountry(c);
@@ -194,7 +200,7 @@ export function BriefCard({
                 ))}
               </div>
               {method === "card" ? (
-                <span className="block text-xs">Visa, Mastercard · paiement sécurisé par Stripe</span>
+                <span className="block text-xs">Visa, Mastercard · payé en euros, sécurisé par Stripe</span>
               ) : (
               <label className="flex items-center gap-2">
                 Pays
@@ -213,7 +219,7 @@ export function BriefCard({
               </label>
               )}
               <span className="mt-1 block text-xs">
-                {fcfa ? formatFcfa(price) : `${local.amount.toLocaleString("fr-FR")} ${local.currency} (≈ ${formatFcfa(price)})`} · une vidéo qui échoue est relancée sans frais.
+                {payLabel} · une vidéo qui échoue est relancée sans frais.
               </span>
             </div>
             <button
@@ -222,7 +228,7 @@ export function BriefCard({
               className="flex h-11 items-center justify-center gap-2 rounded-pill bg-brand px-5 text-sm font-semibold text-white transition hover:bg-[#d24f0a] disabled:opacity-50"
             >
               {busy && <Spinner />}
-              {`Créer la vidéo · ${formatFcfa(price)}`}
+              {`Créer la vidéo · ${method === "card" ? formatEur(cardPriceCents(duration)) : formatFcfa(price)}`}
             </button>
           </div>
         )}

@@ -1,23 +1,23 @@
 import "server-only";
 import type { CheckoutInput, CheckoutResult, PaymentCheck, PaymentProvider } from "./types";
 import { getAdminClient } from "../insforge/server";
-import { videoPrice, type Duration } from "../models";
+import { cardPriceCents, type Duration } from "../models";
 
 /**
  * Card payments: Stripe Checkout through InsForge Payments (the Stripe key
- * and webhook live in InsForge). One catalog price per duration, in XOF.
+ * and webhook live in InsForge). One catalog price per duration, in euros.
  * The outcome is read from the verified Stripe events InsForge stores,
  * through public.sz_stripe_checkout_status (migration 20261029143846),
  * never from the success URL.
  */
 const ENV = (process.env.STRIPE_ENV === "test" ? "test" : "live") as "test" | "live";
 
-/** Live catalog prices created for Sokozia (lookup keys sokozia_video_15s / 30s). */
+/** Live catalog prices (lookup keys sokozia_video_15s_eur / 30s_eur): 3,87 € and 7,74 €. */
 const PRICES: Record<Duration, string> = {
-  15: process.env.STRIPE_PRICE_15 || "price_1UVuSqQwaJ2X97H7zWvvkwI3",
-  30: process.env.STRIPE_PRICE_30 || "price_1UVuSvQwaJ2X97H7r5XLydkZ",
+  15: process.env.STRIPE_PRICE_15 || "price_1UVum7QwaJ2X97H7z1zGpKm4",
+  30: process.env.STRIPE_PRICE_30 || "price_1UVumPQwaJ2X97H7OOLA2G0J",
 };
-const CURRENCY = "xof";
+const CURRENCY = "eur";
 
 export const stripeCardPayment: PaymentProvider = {
   name: "stripe",
@@ -49,7 +49,7 @@ export const stripeCardPayment: PaymentProvider = {
     const r = data as { status: string; amount: number | null; currency: string | null; session: string | null };
     if (r.status === "paid") {
       // Only the exact catalog price counts.
-      if (Number(r.amount) !== videoPrice(order.duration as Duration) || (r.currency ?? "").toLowerCase() !== CURRENCY) {
+      if (Number(r.amount) !== cardPriceCents(order.duration as Duration) || (r.currency ?? "").toLowerCase() !== CURRENCY) {
         return { status: "failed", failure: `Montant reçu (${r.amount} ${r.currency}) différent du prix.`, raw: r };
       }
       return { status: "completed", raw: r };

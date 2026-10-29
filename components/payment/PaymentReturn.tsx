@@ -8,7 +8,7 @@ import type { Order } from "@/lib/types";
 import { Logo } from "@/components/ui/Logo";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
-import { formatFcfa } from "@/lib/models";
+import { cardPriceCents, formatEur, formatFcfa } from "@/lib/models";
 
 /**
  * Landing after the Mobile Money page. Polls the order until it settles,
@@ -78,7 +78,8 @@ export function PaymentReturn() {
             <Spinner className="mx-auto h-8 w-8 text-brand" />
             <h1 className="mt-3 text-xl font-extrabold">On vérifie ton paiement…</h1>
             <p className="mt-1 text-sm text-muted">
-              {order?.provider === "stripe" ? "Paiement par carte en cours de confirmation." : "Confirme sur ton téléphone si ce n'est pas déjà fait."} {order ? formatFcfa(order.amount) : ""}
+              {order?.provider === "stripe" ? "Paiement par carte en cours de confirmation." : "Confirme sur ton téléphone si ce n'est pas déjà fait."}{" "}
+              {order ? (order.provider === "stripe" && (order.duration === 15 || order.duration === 30) ? formatEur(cardPriceCents(order.duration)) : formatFcfa(order.amount)) : ""}
             </p>
             {tries > 8 && (
               <p className="mt-4 rounded-xl bg-bg p-3 text-xs text-muted">

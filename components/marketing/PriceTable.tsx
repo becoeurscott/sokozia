@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { DURATIONS, MODEL, formatFcfa, type Duration } from "@/lib/models";
+import { DURATIONS, MODEL, cardPriceCents, formatEur, formatFcfa, type Duration } from "@/lib/models";
 
 const PER_DURATION: Record<Duration, { title: string; points: string[]; badge?: string }> = {
   15: {
@@ -36,7 +36,7 @@ export function PriceTable({ compact = false }: { compact?: boolean }) {
                 {info.badge && <span className="rounded-pill bg-brand px-2 py-0.5 text-[10px] font-bold text-white">{info.badge}</span>}
               </div>
               <div className="mt-2 text-4xl font-extrabold tabular-nums">{formatFcfa(MODEL.prices[d])}</div>
-              <div className="text-sm text-muted">la vidéo · prête en {MODEL.eta[d]}</div>
+              <div className="text-sm text-muted">la vidéo · ou {formatEur(cardPriceCents(d))} par carte · prête en {MODEL.eta[d]}</div>
               {!compact && (
                 <ul className="mt-4 space-y-1.5 text-sm">
                   {info.points.map((p) => (
@@ -62,7 +62,7 @@ export function PriceTable({ compact = false }: { compact?: boolean }) {
           </ul>
         </div>
       )}
-      <p className="mt-3 text-xs text-muted">Prix en FCFA, payés par Mobile Money au moment de créer la vidéo. Converti automatiquement dans ta monnaie hors zone FCFA.</p>
+      <p className="mt-3 text-xs text-muted">Payé au moment de créer la vidéo : par Mobile Money en FCFA (converti dans ta monnaie hors zone FCFA), ou par carte bancaire en euros.</p>
     </div>
   );
 }

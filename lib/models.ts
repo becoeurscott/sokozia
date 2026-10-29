@@ -71,6 +71,20 @@ export function lowestPrice(): number {
   return Math.min(...DURATIONS.map(videoPrice));
 }
 
+/**
+ * Card price in euro cents: the FCFA price at the fixed peg
+ * (655,957 FCFA = 1 €), matching the live Stripe prices.
+ */
+export const CARD_PRICES_EUR_CENTS: Record<Duration, number> = { 15: 387, 30: 774 };
+
+export function cardPriceCents(duration: Duration): number {
+  return CARD_PRICES_EUR_CENTS[duration];
+}
+
+export function formatEur(cents: number): string {
+  return `${(cents / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u00a0€`;
+}
+
 export function formatFcfa(n: number): string {
   // Non-breaking spaces so "1 600 FCFA" never wraps mid-number.
   return `${n.toLocaleString("fr-FR").replace(/[   ]/g, " ")} FCFA`;
