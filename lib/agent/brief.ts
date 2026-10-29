@@ -2,22 +2,29 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { ACTORS, getActor, suggestActor, type Actor } from "../actors";
 import { MAX_CLIP_SECONDS, clipCount, closestDuration, isDuration, type Duration, type Style } from "../models";
-import type { BriefContent } from "../types";
+import type { BriefContent, ProductInsight } from "../types";
 import { isInsForgeConfigured } from "../db";
+import { readLocalFile } from "../storage";
+import { firstLink, readProductPage, type ProductPage } from "./productPage";
 
 /**
- * "Awa", the creative director, is Claude. It turns a user message (plus the
- * previous brief, if any) into a brief: product, creator, duration, scene,
- * script, and one shot per 15 s Seedance clip.
+ * "Awa", the creative director, is Claude. From the client's message, the
+ * product photo and any product link, it first works out what the product
+ * is, who buys it and why, then picks a creator and an ad format and writes
+ * the script and one camera shot per 15 s Seedance clip.
  *
- * Claude is called directly when ANTHROPIC_API_KEY is set, otherwise through
- * the InsForge model gateway. If neither answers in time, deterministic
- * rules write the brief, so the studio never blocks.
+ * Claude is reached directly when ANTHROPIC_API_KEY is set, otherwise
+ * through the project's OpenRouter key (OPENROUTER_API_KEY, the InsForge
+ * Model Gateway), and as a last resort through the legacy InsForge AI proxy.
+ * If none answers in time, deterministic rules write the brief, so the
+ * studio never blocks.
  */
 
-/** Claude model used as the ad director. */
 const DIRECTOR_MODEL = process.env.ANTHROPIC_DIRECTOR_MODEL || "claude-opus-5-5";
-const DIRECTOR_TIMEOUT_MS = 20_000;
+const OPENROUTER_MODEL = process.env.OPENROUTER_DIRECTOR_MODEL || "anthropic/claude-opus-5.5";
+const DIRECTOR_TIMEOUT_MS = 40_000;
+/** Spoken words per second that still sound natural and lip-sync well. */
+const WORDS_PER_SECOND = 2.5;
 
 /** Joins per-clip prompts in generations.prompt so retries reuse the same shots. */
 export const PROMPT_SEPARATOR = "\n\n---\n\n";
@@ -32,8 +39,25 @@ export interface BriefInput {
   style?: Style | null;
 }
 
+/** The ad formats Awa chooses from, with the label shown to the client. */
+const FORMATS = {
+  temoignage: "Témoignage",
+  probleme_solution: "Problème → solution",
+  demonstration: "Démonstration",
+  deballage: "Déballage",
+  avant_apres: "Avant / après",
+  essayage: "Essayage",
+  offre: "Offre spéciale",
+} as const;
+type FormatKey = keyof typeof FORMATS;
+
 interface Direction {
-  script: string;
+  product: string;
+  message: string;
+  insight: ProductInsight;
+  creatorId: string | null;
+  format: FormatKey | null;
+  lines: string[];
   scene: string;
   shots: string[];
 }
@@ -42,41 +66,50 @@ export async function buildBrief(input: BriefInput): Promise<BriefContent> {
   const text = input.text.trim();
   const prev = input.previous ?? null;
 
-  const product = extractProduct(text, prev?.product);
-  const actor = pickActor(input, text, prev, product);
-  const duration = pickDuration(input, text, prev);
-  const fallbackScene = extractScene(text, actor, prev?.scene);
+  const link = firstLink(text);
+  const page = link ? await readProductPage(link) : null;
+  // A product page's main image stands in for a photo the client didn't send.
+  const imageUrl = input.imageUrl ?? prev?.imageUrl ?? page?.imageUrl ?? null;
 
-  const directed = await direct({ product, actor, duration, text, scene: fallbackScene, previous: prev, hasPhoto: Boolean(input.imageUrl ?? prev?.imageUrl) });
-  const script = directed?.script ?? templateScript({ product, duration, text });
-  const scene = directed?.scene ?? fallbackScene;
+  const guessedProduct = prev?.product ?? page?.title?.slice(0, 60) ?? extractProduct(text);
+  const forced = forcedActor(input, text, prev);
+  const duration = pickDuration(input, text, prev);
+  const fallbackActor = forced ?? suggestActor(`${text} ${guessedProduct}`);
+  const fallbackScene = extractScene(text, fallbackActor, prev?.scene);
+
+  const directed = await direct({ text, previous: prev, page, imageUrl, duration, forced, scene: fallbackScene });
+
+  const actor = forced ?? getActor(directed?.creatorId) ?? fallbackActor;
+  const product = prev?.product ?? directed?.product ?? guessedProduct;
+  const lines = directed?.lines ?? null;
+  const script = lines ? lines.join(" ") : templateScript({ product, duration, text });
 
   const changed = prev ? describeChanges(prev, { actorId: actor.id, duration }) : null;
-  const intro = prev
+  const fallbackIntro = prev
     ? changed
       ? `C'est noté : ${changed}. Voici le brief mis à jour.`
       : "J'ai retravaillé le script avec tes précisions."
     : `Top ! Voici ce que je propose pour « ${product} ». Tu peux changer le créateur, la durée ou le script avant de lancer.`;
 
   return {
-    text: intro,
+    text: directed?.message || fallbackIntro,
     product,
     actorId: actor.id,
     duration,
     style: "seedance",
     script,
-    scene,
+    scene: directed?.scene ?? fallbackScene,
     shots: directed?.shots ?? null,
-    imageUrl: input.imageUrl ?? prev?.imageUrl ?? null,
+    lines,
+    insight: directed?.insight ?? prev?.insight ?? null,
+    format: directed?.format ? FORMATS[directed.format] : (prev?.format ?? null),
+    imageUrl,
   };
 }
 
-/* ------------------------------------------------------------------ */
+/* ------------------------- fallback rules ------------------------- */
 
-function extractProduct(text: string, previous?: string): string {
-  // Follow-ups ("fais-la en 30 secondes", "change de créateur") refine the
-  // brief; they don't name a new product.
-  if (previous) return previous;
+function extractProduct(text: string): string {
   const cleaned = text
     .replace(/https?:\/\/\S+/g, "")
     .replace(/\b\d{1,2}\s*(s|sec|secondes?)\b/gi, " ")
@@ -87,18 +120,16 @@ function extractProduct(text: string, previous?: string): string {
     const first = cleaned.split(/[.,;:!?\n]/)[0].trim();
     return capitalize(first.slice(0, 60));
   }
-  return previous ?? "Ton produit";
+  return "Ton produit";
 }
 
-function pickActor(input: BriefInput, text: string, prev: BriefContent | null, product: string): Actor {
+/** A creator the client chose (chip, name in the message, or the previous brief). */
+function forcedActor(input: BriefInput, text: string, prev: BriefContent | null): Actor | null {
   if (input.actorId && getActor(input.actorId)) return getActor(input.actorId)!;
-  const t = text.toLowerCase();
-  for (const a of ACTORS) {
-    const n = a.name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-    if (t.normalize("NFD").replace(/[̀-ͯ]/g, "").includes(n)) return a;
-  }
-  if (prev) return getActor(prev.actorId) ?? suggestActor(product);
-  return suggestActor(text + " " + product);
+  const t = fold(text);
+  for (const a of ACTORS) if (new RegExp(`\\b${fold(a.name)}\\b`).test(t)) return a;
+  if (prev) return getActor(prev.actorId) ?? null;
+  return null;
 }
 
 function pickDuration(input: BriefInput, text: string, prev: BriefContent | null): Duration {
@@ -150,57 +181,129 @@ function templateScript(p: { product: string; duration: Duration; text: string }
 
 /* ---------------------------- Claude ------------------------------ */
 
-const DIRECTOR_SYSTEM = `Tu es Awa, directrice de création d'une agence de pubs vidéo UGC pour les commerces d'Afrique francophone (Cameroun, Côte d'Ivoire, Sénégal, RDC, Bénin…).
+const DIRECTOR_SYSTEM = `Tu es Awa, directrice de création d'une agence de pubs vidéo UGC pour les commerces d'Afrique francophone (Côte d'Ivoire, Sénégal, Cameroun, RDC, Mali, Bénin, Togo, Burkina, Guinée…). Tes clients sont de petits commerçants : boutiques, vendeuses sur WhatsApp et Facebook, maquis, salons, artisans. Chaque pub doit faire vendre, pas seulement être jolie.
 
-Tu écris le brief d'une pub verticale 9:16 tournée par un créateur africain face caméra, comme une vraie cliente qui parle à ses amis. La vidéo est générée par Seedance 2.0 en clips de 15 secondes.
+La vidéo est verticale 9:16, tournée par un créateur africain face caméra comme une vraie personne qui parle à ses amis (style TikTok / statut WhatsApp). Elle est générée par Seedance 2.0 en clips de 15 secondes ; le créateur dit le texte en synchronisation labiale.
 
-Règles du script :
-- Français parlé, naturel, chaleureux, comme en Afrique de l'Ouest et centrale. Phrases courtes, faciles à dire.
-- Une accroche forte dans les 2 premières secondes, un bénéfice concret, puis un appel à l'action (WhatsApp, lien en bio, passer en boutique).
-- Environ 2,5 mots par seconde de vidéo. Pas de didascalies, pas d'emojis, pas de hashtags, pas de guillemets.
-- N'invente pas de prix, de chiffres ou de promesses que le client n'a pas donnés.
+ÉTAPE 1 — COMPRENDRE LE PRODUIT (avant d'écrire quoi que ce soit)
+- Regarde la photo avec attention : type de produit, marque et texte lisibles sur l'étiquette, couleur, matière, emballage, contenance ou taille, état neuf ou non, nombre d'articles.
+- Lis la demande du client et la page produit s'il y en a une.
+- Déduis : ce que c'est exactement, qui l'achète (âge, situation, ville), le problème du quotidien qu'il règle, le bénéfice principal pour cet acheteur, le moment où on l'utilise.
+- Ne garde comme « faits » que ce que le client a écrit ou ce qui est lisible sur la photo ou la page (prix, quantité, livraison, numéro, ingrédients, garantie…). Si la photo contredit le texte, fie-toi au texte et adapte.
+- Si le produit n'est pas clair, prends l'interprétation la plus probable pour un commerce africain et reste prudente dans le script.
 
-Pour chaque clip de 15 secondes, écris un plan ("shot") en anglais pour le modèle vidéo : ce que fait le créateur, comment il tient ou montre le produit, le cadrage et le mouvement de caméra. Les plans s'enchaînent dans le même décor avec la même personne.`;
+ÉTAPE 2 — CHOISIR L'ANGLE
+Choisis un format :
+- temoignage : la créatrice raconte son expérience (cosmétiques, cheveux, alimentation, bien-être).
+- probleme_solution : on part d'une galère connue (coupure de courant, cheveux cassants, chaleur, moustiques…) et le produit la règle.
+- demonstration : on voit le produit fonctionner (électroménager, tech, outils, cuisine, solaire).
+- deballage : on ouvre le colis et on découvre (téléphones, accessoires, cadeaux, commandes en ligne).
+- avant_apres : un résultat visible (nettoyage, coiffure, peau, réparation) — sans promesse exagérée.
+- essayage : on porte et on tourne sur soi (vêtements, chaussures, bijoux, perruques, sacs).
+- offre : la pub est portée par une promo ou un prix que le client a donné.
+Choisis aussi le créateur le plus crédible pour ce produit et cet acheteur (genre, âge, univers), sauf si on t'impose quelqu'un.
 
-function directionSchema(clips: number) {
+ÉTAPE 3 — ÉCRIRE LE SCRIPT
+- Français parlé d'Afrique de l'Ouest et centrale : naturel, chaleureux, phrases courtes faciles à dire. Quelques tournures locales légères sont bienvenues (« franchement », « vraiment », « c'est propre », « on est ensemble ») mais pas de caricature ni d'argot difficile.
+- Accroche dans les 2 premières secondes, liée au produit. Exemples de mécaniques : question qui touche le problème (« Tes cheveux cassent dès que tu les coiffes ? »), résultat d'abord (« Regarde ma peau après une semaine »), interdiction (« Arrête d'acheter des ventilos qui lâchent en un mois »), surprise ou prix si le client l'a donné, preuve sociale (« Tout le quartier me demande où je l'ai eu »). Jamais « Salut tout le monde » ni « Bonjour à tous ».
+- Ensuite un bénéfice concret avec un détail sensoriel ou une preuve visible (texture, odeur, bruit, rapidité, solidité, avant/après), et une objection levée si possible (qualité, livraison, prix).
+- Termine par UN appel à l'action clair. Utilise les infos du client (numéro WhatsApp, boutique, quartier, livraison, prix). Sans info : « Écris-nous sur WhatsApp » ou « Passe à la boutique ». N'invente jamais de numéro, d'adresse, de prix, de pourcentage, de délai ni de garantie.
+- Pas de promesses médicales, de gains d'argent garantis ni de comparaisons dénigrantes avec une marque.
+- 15 s = un clip : accroche (0–3 s), preuve ou démo (3–11 s), appel à l'action (11–15 s).
+- 30 s = deux clips : le clip 1 accroche, pose le problème et présente le produit ; le clip 2 montre la démo ou le résultat, lève une objection et finit sur l'appel à l'action.
+- Donne le texte clip par clip (« lines ») : chaque élément est ce que le créateur dit pendant ce clip, en phrases complètes. Respecte le nombre de mots demandé : au-delà, il parle trop vite.
+- Écris les nombres comme on les dit : « quarante-cinq mille francs », « zéro sept, zéro sept, douze, trente-quatre, cinquante-six ».
+- Pas de didascalies, d'emojis, de hashtags ni de guillemets dans le texte parlé.
+
+ÉTAPE 4 — LES PLANS (en anglais, pour Seedance)
+Pour chaque clip, un plan de 40 à 80 mots : ce que fait le créateur avec le produit, geste par geste (tenir l'étiquette face caméra, ouvrir, verser, appliquer, allumer, porter, croquer…), le cadrage (gros plan sur les mains et le produit, plan poitrine face caméra…) et un mouvement de caméra simple. Le produit est visible dans les 2 premières secondes et ressemble exactement à ta description visuelle. Même personne, même tenue, même décor d'un clip à l'autre. Pas de texte à l'écran, pas d'autres personnes sauf si c'est indispensable, pas d'actions impossibles à filmer.
+
+ÉTAPE 5 — TON MESSAGE AU CLIENT
+En une ou deux phrases, en tutoyant : dis ce que tu as compris du produit et l'angle choisi. S'il manque une info qui rendrait la pub plus efficace (prix, numéro WhatsApp, lieu de livraison, promo), propose-lui de l'ajouter, une seule fois.
+
+Quand le client demande une modification d'un brief existant, garde ce qui marche et change seulement ce qu'il demande.`;
+
+function directionSchema(clips: number, creatorIds: string[]) {
+  const str = (description: string) => ({ type: "string", description });
   return {
     type: "object",
     properties: {
-      script: { type: "string", description: "Texte parlé complet, en français." },
-      scene: { type: "string", description: "Le lieu du tournage en quelques mots, en français (ex. « dans une boutique bien rangée »)." },
-      shots: {
-        type: "array",
-        description: `Exactement ${clips} plan(s), un par clip de 15 s, en anglais.`,
-        items: { type: "string" },
+      product_name: str("Nom court du produit en français, 2 à 6 mots, tel qu'un client le dirait (ex. « Beurre de karité pur »)."),
+      understanding: {
+        type: "object",
+        properties: {
+          what: str("Ce qu'est le produit, une phrase en français."),
+          audience: str("Qui l'achète, en français, quelques mots."),
+          benefit: str("Le bénéfice principal pour cet acheteur, en français, une phrase courte."),
+          facts: { type: "array", items: { type: "string" }, description: "Faits donnés par le client ou lisibles sur la photo ou la page (prix, contenance, livraison…), en français. Liste vide si aucun." },
+          visual: str("Apparence exacte du produit seul en anglais pour le modèle vidéo : forme, couleurs, matière, emballage, taille, texte lisible. Ne décris pas le décor ni les objets autour (boissons, enseignes, autres marques)."),
+          demo: str("Comment une personne le montre ou l'utilise physiquement face caméra, en anglais."),
+        },
+        required: ["what", "audience", "benefit", "facts", "visual", "demo"],
+        additionalProperties: false,
       },
+      creator_id: { type: "string", enum: creatorIds, description: "Le créateur le plus crédible pour ce produit." },
+      format: { type: "string", enum: Object.keys(FORMATS), description: "Le format de la pub." },
+      lines: { type: "array", items: { type: "string" }, description: `Exactement ${clips} élément(s) : le texte parlé de chaque clip de 15 s, en français.` },
+      scene: str("Le lieu du tournage en quelques mots, en français (ex. « dans une boutique bien rangée »), sans décrire la personne."),
+      shots: { type: "array", items: { type: "string" }, description: `Exactement ${clips} plan(s), un par clip de 15 s, en anglais.` },
+      message: str("Ton message au client, une ou deux phrases en français, en le tutoyant."),
     },
-    required: ["script", "scene", "shots"],
+    required: ["product_name", "understanding", "creator_id", "format", "lines", "scene", "shots", "message"],
     additionalProperties: false,
   };
 }
 
-function directionPrompt(p: { product: string; actor: Actor; duration: Duration; text: string; scene: string; previous: BriefContent | null; hasPhoto: boolean }): string {
+interface DirectInput {
+  text: string;
+  previous: BriefContent | null;
+  page: ProductPage | null;
+  imageUrl: string | null;
+  duration: Duration;
+  forced: Actor | null;
+  scene: string;
+}
+
+function directionPrompt(p: DirectInput, hasImage: boolean): string {
   const clips = clipCount(p.duration);
+  const words = Math.round(MAX_CLIP_SECONDS * WORDS_PER_SECOND);
+  const creators = p.forced
+    ? `Créateur imposé par le client : ${p.forced.id} — ${p.forced.name}, ${p.forced.gender === "f" ? "femme" : "homme"} de ${p.forced.age} ans, ${p.forced.country}, univers ${p.forced.niche}, voix ${p.forced.voice}. Réponds avec creator_id = ${p.forced.id}.`
+    : `Créateurs disponibles (id — prénom, genre, âge, pays, univers) :\n${ACTORS.map((a) => `- ${a.id} — ${a.name}, ${a.gender === "f" ? "F" : "H"}, ${a.age} ans, ${a.country}, ${a.niche}`).join("\n")}`;
+  const prev = p.previous;
   return [
-    `Produit : ${p.product}`,
-    `Créateur : ${p.actor.name}, ${p.actor.country} (${p.actor.niche}, voix ${p.actor.voice}). Apparence : ${p.actor.look}.`,
-    `Durée : ${p.duration} secondes, soit ${clips} clip(s) de ${MAX_CLIP_SECONDS} s. Le script fait environ ${Math.round(p.duration * 2.5)} mots, jamais plus de ${Math.round(p.duration * 2.8)} : au-delà, le créateur parle trop vite.`,
-    `Lieu suggéré : ${p.scene}`,
-    p.hasPhoto ? "Le client a envoyé une photo du produit : le créateur doit le montrer clairement." : "Pas de photo du produit : le créateur en parle et le mime de façon crédible.",
-    p.previous ? `Brief précédent à faire évoluer :\nScript : ${p.previous.script}\nLieu : ${p.previous.scene}` : null,
-    `Demande du client : ${p.text}`,
+    hasImage ? "La photo jointe est le produit du client (ou l'image principale de sa page produit)." : "Le client n'a pas envoyé de photo : décris le produit le plus probable et le créateur le montre de façon crédible.",
+    p.page ? `Page produit (${p.page.url}) :\nTitre : ${p.page.title ?? "—"}\nDescription : ${p.page.description ?? "—"}` : null,
+    prev
+      ? [
+          "Brief précédent à faire évoluer :",
+          `Produit : ${prev.product}`,
+          prev.insight ? `Compréhension : ${prev.insight.what} Pour : ${prev.insight.audience}. Bénéfice : ${prev.insight.benefit} Faits : ${prev.insight.facts.join(" ; ") || "aucun"}` : null,
+          prev.format ? `Format : ${prev.format}` : null,
+          `Script : ${prev.script}`,
+          `Lieu : ${prev.scene}`,
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : null,
+    `Durée : ${p.duration} secondes, soit ${clips} clip(s) de ${MAX_CLIP_SECONDS} s. Chaque clip fait environ ${words} mots parlés, jamais plus de ${Math.round(words * 1.1)}.`,
+    `Lieu suggéré (tu peux en choisir un meilleur) : ${p.scene}`,
+    creators,
     "",
-    `Réponds avec le script et le lieu en français (le lieu en quelques mots, sans décrire la personne), et ${clips} plan(s) en anglais.`,
+    `Demande du client : ${p.text || "(pas de texte, seulement la photo)"}`,
   ]
     .filter((l) => l !== null)
     .join("\n");
 }
 
-async function direct(p: { product: string; actor: Actor; duration: Duration; text: string; scene: string; previous: BriefContent | null; hasPhoto: boolean }): Promise<Direction | null> {
+async function direct(p: DirectInput): Promise<Direction | null> {
   const clips = clipCount(p.duration);
+  const ids = p.forced ? [p.forced.id] : ACTORS.map((a) => a.id);
+  const image = p.imageUrl ? await loadImage(p.imageUrl) : null;
   let raw: string | null = null;
   try {
-    if (process.env.ANTHROPIC_API_KEY) raw = await directWithClaude(p, clips);
+    if (process.env.ANTHROPIC_API_KEY) raw = await directWithClaude(p, clips, ids, image);
+    else if (process.env.OPENROUTER_API_KEY) raw = await directWithOpenRouter(p, clips, ids, image);
     else if (isInsForgeConfigured()) raw = await directWithGateway(p, clips);
   } catch (e) {
     console.error("[awa] director unavailable, using template:", e instanceof Error ? e.message : e);
@@ -208,49 +311,134 @@ async function direct(p: { product: string; actor: Actor; duration: Duration; te
   }
   if (!raw) return null;
   try {
-    const d = JSON.parse(raw) as Partial<Direction>;
-    const script = d.script?.trim();
-    if (!script || script.length < 20) return null;
-    const shots = Array.isArray(d.shots) ? d.shots.map((s) => String(s).trim()).filter(Boolean) : [];
-    return { script, scene: d.scene?.trim() || p.scene, shots: shots.length === clips ? shots : [] };
-  } catch {
+    return parseDirection(JSON.parse(raw), clips, p);
+  } catch (e) {
+    console.error("[awa] unreadable direction:", e instanceof Error ? e.message : e);
     return null;
   }
 }
 
-async function directWithClaude(p: Parameters<typeof direct>[0], clips: number): Promise<string | null> {
+function parseDirection(d: Record<string, unknown>, clips: number, p: DirectInput): Direction | null {
+  const strings = (v: unknown) => (Array.isArray(v) ? v.map((s) => String(s).trim()).filter(Boolean) : []);
+  let lines = strings(d.lines);
+  // Older gateway answers send one "script" string; cut it per clip.
+  if (!lines.length && typeof d.script === "string") lines = splitScript(d.script.trim(), clips);
+  if (lines.length > clips) lines = [...lines.slice(0, clips - 1), lines.slice(clips - 1).join(" ")];
+  if (lines.length !== clips || lines.join(" ").length < 20) return null;
+  const shots = strings(d.shots);
+  const u = (d.understanding ?? {}) as Record<string, unknown>;
+  const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const format = s(d.format) as FormatKey;
+  return {
+    product: s(d.product_name).slice(0, 60) || "Ton produit",
+    message: s(d.message),
+    insight: { what: s(u.what), audience: s(u.audience), benefit: s(u.benefit), facts: strings(u.facts), visual: s(u.visual), demo: s(u.demo) },
+    creatorId: p.forced?.id ?? (getActor(s(d.creator_id)) ? s(d.creator_id) : null),
+    format: format in FORMATS ? format : null,
+    lines,
+    scene: s(d.scene) || p.scene,
+    shots: shots.length === clips ? shots : [],
+  };
+}
+
+interface LoadedImage {
+  /** Public https URL the model can fetch itself. */
+  url?: string;
+  /** Inline bytes, for files only this server can read (local dev). */
+  base64?: string;
+  mediaType?: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+}
+
+/** Public images are passed by URL; local dev files are read and inlined. */
+async function loadImage(url: string): Promise<LoadedImage | null> {
+  const local = url.match(/\/api\/files\/([^/]+)\/(.+)$/);
+  const isPublic = /^https:\/\//.test(url) && !/\/\/(localhost|127\.0\.0\.1)/.test(url);
+  if (isPublic && !local) return { url };
+  if (!local) return null;
+  const bytes = await readLocalFile(local[1], decodeURIComponent(local[2]));
+  if (!bytes || bytes.length > 4_500_000) return null;
+  const ext = local[2].split(".").pop()?.toLowerCase();
+  const mediaType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "gif" ? "image/gif" : "image/jpeg";
+  return { base64: bytes.toString("base64"), mediaType };
+}
+
+async function directWithClaude(p: DirectInput, clips: number, ids: string[], image: LoadedImage | null): Promise<string | null> {
   const client = new Anthropic({ timeout: DIRECTOR_TIMEOUT_MS, maxRetries: 1 });
+  const content: Anthropic.Beta.BetaContentBlockParam[] = [];
+  if (image?.url) content.push({ type: "image", source: { type: "url", url: image.url } });
+  else if (image?.base64) content.push({ type: "image", source: { type: "base64", media_type: image.mediaType!, data: image.base64 } });
+  content.push({ type: "text", text: directionPrompt(p, Boolean(image)) });
   const res = await client.beta.messages.create({
     model: DIRECTOR_MODEL,
-    max_tokens: 4000,
-    // Low effort keeps the brief fast; a short script doesn't need deep thinking.
-    output_config: { effort: "low", format: { type: "json_schema", schema: directionSchema(clips) } },
+    max_tokens: 6000,
+    output_config: { effort: "low", format: { type: "json_schema", schema: directionSchema(clips, ids) } },
     // If a safety classifier declines, the API retries on a fallback model.
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
     system: DIRECTOR_SYSTEM,
-    messages: [{ role: "user", content: directionPrompt(p) }],
+    messages: [{ role: "user", content }],
   });
   if (res.stop_reason === "refusal" || res.stop_reason === "max_tokens") return null;
   const block = res.content.find((b) => b.type === "text");
   return block && block.type === "text" ? block.text : null;
 }
 
-async function directWithGateway(p: Parameters<typeof direct>[0], clips: number): Promise<string | null> {
+async function directWithOpenRouter(p: DirectInput, clips: number, ids: string[], image: LoadedImage | null): Promise<string | null> {
+  const content: Array<Record<string, unknown>> = [];
+  const imageUrl = image?.url ?? (image?.base64 ? `data:${image.mediaType};base64,${image.base64}` : null);
+  if (imageUrl) content.push({ type: "image_url", image_url: { url: imageUrl } });
+  content.push({ type: "text", text: directionPrompt(p, Boolean(image)) });
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    signal: AbortSignal.timeout(DIRECTOR_TIMEOUT_MS),
+    headers: {
+      authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "content-type": "application/json",
+      "http-referer": "https://sokozia.com",
+      "x-title": "Sokozia",
+    },
+    body: JSON.stringify({
+      model: OPENROUTER_MODEL,
+      max_tokens: 6000,
+      reasoning: { effort: "low" },
+      provider: { require_parameters: true },
+      response_format: { type: "json_schema", json_schema: { name: "brief", strict: true, schema: directionSchema(clips, ids) } },
+      messages: [
+        { role: "system", content: DIRECTOR_SYSTEM },
+        { role: "user", content },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const json = (await res.json()) as { choices?: Array<{ finish_reason?: string; message?: { content?: string } }> };
+  const choice = json.choices?.[0];
+  if (choice?.finish_reason === "length") return null;
+  return stripFence(choice?.message?.content);
+}
+
+/** Legacy InsForge AI proxy: text only, used when no OpenRouter key is set. */
+async function directWithGateway(p: DirectInput, clips: number): Promise<string | null> {
   const { getAdminClient } = await import("../insforge/server");
   const completion = await Promise.race([
     getAdminClient().ai.chat.completions.create({
       model: process.env.INSFORGE_SCRIPT_MODEL || "anthropic/claude-sonnet-4.5",
-      maxTokens: 800,
+      maxTokens: 2000,
       messages: [
-        { role: "system", content: `${DIRECTOR_SYSTEM}\n\nRéponds uniquement en JSON valide : {"script": "texte parlé en français", "scene": "lieu en quelques mots, en français", "shots": [${clips} plan(s) en anglais]}.` },
-        { role: "user", content: directionPrompt(p) },
+        {
+          role: "system",
+          content: `${DIRECTOR_SYSTEM}\n\nRéponds uniquement en JSON valide avec les clés : product_name, understanding {what, audience, benefit, facts[], visual, demo}, creator_id, format, lines [${clips} élément(s)], scene, shots [${clips} élément(s)], message.`,
+        },
+        { role: "user", content: directionPrompt(p, false) },
       ],
     }),
     new Promise<null>((resolve) => setTimeout(() => resolve(null), DIRECTOR_TIMEOUT_MS)),
   ]);
-  const text = completion?.choices?.[0]?.message?.content?.trim();
-  return text ? text.replace(/^```(?:json)?\s*|\s*```$/g, "") : null;
+  return stripFence(completion?.choices?.[0]?.message?.content);
+}
+
+function stripFence(text: string | null | undefined): string | null {
+  const t = text?.trim();
+  return t ? t.replace(/^```(?:json)?\s*|\s*```$/g, "") : null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -262,6 +450,9 @@ function describeChanges(prev: BriefContent, next: { actorId: string; duration: 
   return parts.length ? parts.join(", ") : null;
 }
 
+function fold(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
 function lower(s: string): string {
   return s.charAt(0).toLowerCase() + s.slice(1);
 }
@@ -293,18 +484,25 @@ function splitScript(script: string, n: number): string[] {
  * its share of the script; clips after the first continue the same take.
  */
 export function buildVideoPrompts(
-  brief: Pick<BriefContent, "product" | "script" | "scene" | "duration"> & { shots?: string[] | null },
+  brief: Pick<BriefContent, "product" | "script" | "scene" | "duration"> & Pick<Partial<BriefContent>, "shots" | "lines" | "insight" | "imageUrl">,
   actor: Actor,
 ): string[] {
   const n = clipCount(brief.duration);
-  const lines = splitScript(brief.script, n);
+  // Claude's per-clip lines hold only while the client kept the same script and duration.
+  const lines = brief.lines?.length === n && brief.lines.join(" ") === brief.script ? brief.lines : splitScript(brief.script, n);
+  const visual = brief.insight?.visual;
+  const product = visual ? `${brief.product} (${visual})` : brief.product;
+  const hasPhoto = Boolean(brief.imageUrl);
   return lines.map((line, i) =>
     [
       `Vertical 9:16 UGC advert, ${MAX_CLIP_SECONDS} seconds, filmed on a phone, natural handheld feel.`,
       n > 1 ? `Part ${i + 1} of ${n} of the same ad: ${i === 0 ? "it opens with a strong hook." : "it continues the previous part seamlessly, same person, outfit, setting and light, and ends on the call to action."}` : null,
       `The first reference image is the presenter's character sheet: ${actor.look}. Keep this exact face, hair, outfit and identity throughout.`,
-      `The second reference image is the product (${brief.product}); show it clearly in hand or on screen.`,
-      `Setting: ${brief.scene}. Warm daylight, authentic African small-business atmosphere.`,
+      hasPhoto
+        ? `The second reference image is the product: ${product}. Reproduce it exactly (shape, colours, packaging, label) and show it clearly in hand.`
+        : `The product is ${product}; show it clearly in hand.`,
+      brief.insight?.demo ? `How the product is shown: ${brief.insight.demo}` : null,
+      `Setting: ${brief.scene}. Natural light that fits the setting, authentic African small-business atmosphere.`,
       brief.shots?.[i] ? `Shot: ${brief.shots[i]}` : null,
       `The presenter looks at the camera and speaks in French with a ${actor.voice} voice, lip-synced to this script: "${line}"`,
       `No captions, no logos, no text overlays.`,

@@ -109,7 +109,7 @@ export async function submitGeneration(generation: Generation): Promise<Generati
   const count = clipCount(generation.duration);
   // Prompts were written at creation (with Claude's shots); rebuild only for old rows.
   const stored = generation.prompt.split(PROMPT_SEPARATOR);
-  const prompts = stored.length === count ? stored : buildVideoPrompts({ ...generation, scene: "dans un décor simple et lumineux" }, actor);
+  const prompts = stored.length === count ? stored : buildVideoPrompts({ ...generation, scene: "dans un décor simple et lumineux", imageUrl: generation.product_image_url }, actor);
   try {
     const submitted = await Promise.all(
       prompts.slice(0, count).map((prompt, part) =>

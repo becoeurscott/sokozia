@@ -71,6 +71,32 @@ export function BriefCard({
       </div>
 
       <div className="space-y-4 p-4">
+        {/* What Awa understood: the client can correct it before paying. */}
+        {brief.insight?.what && (
+          <section>
+            <Label>Ce que j&apos;ai compris</Label>
+            <div className="space-y-1 rounded-xl bg-bg p-3 text-sm leading-relaxed">
+              <p>{brief.insight.what}</p>
+              {brief.insight.audience && (
+                <p className="text-muted">
+                  <span className="font-semibold text-ink/80">Pour :</span> {brief.insight.audience}
+                </p>
+              )}
+              {brief.insight.benefit && (
+                <p className="text-muted">
+                  <span className="font-semibold text-ink/80">Argument :</span> {brief.insight.benefit}
+                </p>
+              )}
+              {brief.format && (
+                <p className="text-muted">
+                  <span className="font-semibold text-ink/80">Format :</span> {brief.format}
+                </p>
+              )}
+            </div>
+            {!locked && <p className="mt-1 text-xs text-muted">Pas tout à fait ça ? Précise-le dans le chat, je refais le brief.</p>}
+          </section>
+        )}
+
         {/* Creator */}
         <section>
           <Label>Créateur</Label>

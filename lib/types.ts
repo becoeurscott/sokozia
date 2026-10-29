@@ -27,9 +27,30 @@ export interface BriefContent {
   scene: string;
   /** Claude's camera direction, one per 15 s clip (English, for Seedance). */
   shots?: string[] | null;
+  /** The script cut per clip by Claude, so each clip speaks a whole beat. */
+  lines?: string[] | null;
+  /** What Awa understood about the product (from the text, photo and link). */
+  insight?: ProductInsight | null;
+  /** Ad format Awa chose, e.g. "Démonstration". */
+  format?: string | null;
   imageUrl?: string | null;
   /** Set once the user clicked "Créer la vidéo". */
   generationId?: string | null;
+}
+
+export interface ProductInsight {
+  /** What the product is, one sentence in French. */
+  what: string;
+  /** Who buys it, in French. */
+  audience: string;
+  /** The main benefit for that buyer, in French. */
+  benefit: string;
+  /** Facts the client gave or that are readable on the photo or page. */
+  facts: string[];
+  /** How the product looks, in English, for the video model. */
+  visual: string;
+  /** How a person physically shows or uses it on camera, in English. */
+  demo: string;
 }
 
 export interface Message {

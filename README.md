@@ -86,12 +86,28 @@ l'installation ; sinon renseigne `FFMPEG_PATH`.
 
 ## Mettre en place Claude (directrice de création)
 
-1. Crée une clé sur console.anthropic.com → `ANTHROPIC_API_KEY`.
-2. Awa (`lib/agent/brief.ts`) appelle `claude-opus-5-5` (effort `low` pour
-   rester rapide, sortie JSON structurée) et écrit : le script en français
-   parlé, le lieu, et un plan caméra par clip de 15 s. `ANTHROPIC_DIRECTOR_MODEL`
-   permet de changer de modèle.
-3. Sans clé : gateway InsForge si configuré, sinon un script modèle.
+Awa (`lib/agent/brief.ts`) comprend d'abord le produit, puis écrit la pub :
+
+1. **Comprendre** : Claude regarde la photo du produit (étiquette, couleur,
+   emballage, taille) et lit la page produit si le client colle un lien
+   (`lib/agent/productPage.ts`, https publics seulement). Il note ce qu'est le
+   produit, pour qui, le bénéfice principal, les faits donnés (prix, numéro,
+   livraison), son apparence et comment le montrer. La carte du brief affiche
+   « Ce que j'ai compris » pour que le client corrige avant de payer.
+2. **Choisir** : le créateur le plus crédible (sauf choix du client) et un
+   format (témoignage, problème → solution, démonstration, déballage,
+   avant / après, essayage, offre).
+3. **Écrire** : le texte parlé clip par clip (accroche, preuve, appel à
+   l'action, ~37 mots par 15 s), le lieu, et un plan caméra en anglais par
+   clip. Seedance reçoit aussi la description visuelle du produit et le geste
+   de démonstration.
+
+Accès à Claude, dans cet ordre : `ANTHROPIC_API_KEY` (API directe,
+`claude-opus-5-5`, `ANTHROPIC_DIRECTOR_MODEL` pour changer), sinon
+`OPENROUTER_API_KEY`, la clé du Model Gateway InsForge
+(`npx -y @insforge/cli ai setup`, déjà dans le déploiement ;
+`anthropic/claude-opus-5.5`, `OPENROUTER_DIRECTOR_MODEL` pour changer),
+sinon l'ancien proxy IA d'InsForge (texte seul), sinon un script modèle.
 
 ## pawaPay (Mobile Money)
 
