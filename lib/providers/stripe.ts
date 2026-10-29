@@ -48,8 +48,12 @@ export const stripeCardPayment: PaymentProvider = {
     if (error || !data) return { status: "pending" };
     const r = data as { status: string; amount: number | null; currency: string | null; session: string | null };
     if (r.status === "paid") {
-      // Only the exact catalog price counts.
-      if (Number(r.amount) !== cardPriceCents(order.duration as Duration) || (r.currency ?? "").toLowerCase() !== CURRENCY) {
+      // Only the exact price of this order counts. Orders opened before card
+      // payments moved to euros were charged in FCFA (XOF) at order.amount.
+      const eur = (order.currency ?? "").toUpperCase() === "EUR";
+      const expected = eur ? cardPriceCents(order.duration as Duration) : order.amount;
+      const currency = eur ? CURRENCY : "xof";
+      if (Number(r.amount) !== expected || (r.currency ?? "").toLowerCase() !== currency) {
         return { status: "failed", failure: `Montant reçu (${r.amount} ${r.currency}) différent du prix.`, raw: r };
       }
       return { status: "completed", raw: r };
