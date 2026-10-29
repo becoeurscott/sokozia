@@ -1,8 +1,8 @@
 /**
- * The 16 Sokozia creators (AI characters). Their files live in
+ * The 26 Sokozia creators (AI characters). Their files live in
  * public/creators/<files>/: portrait.jpg (cards), sheet.jpg (character
- * sheet sent as the identity reference with every video) and intro.mp4
- * (spoken introduction).
+ * sheet sent as the identity reference with every video) and, for the
+ * first 16, intro.mp4 (spoken introduction).
  */
 export interface Actor {
   id: string;
@@ -18,6 +18,8 @@ export interface Actor {
   look: string;
   bio: string;
   voice: string;
+  /** False when the creator has no intro.mp4 yet (the card shows the portrait only). */
+  intro?: boolean;
 }
 
 export const ACTORS: Actor[] = [
@@ -37,6 +39,17 @@ export const ACTORS: Actor[] = [
   { files: "creator_isabella", id: "tshiala", name: "Tshiala", country: "RD Congo", flag: "🇨🇩", niche: "Maison", gender: "f", age: "33", look: "Tshiala, 33-year-old Congolese woman, deep brown skin, gentle smile, shoulder-length straight black wig with bangs, wearing a coral-pink blouse and a patterned apron in the kitchen", bio: "Produits mis en scène dans la cuisine et la salle de bain, ton rassurant.", voice: "accueillante" },
   { files: "creator_samuel", id: "amina", name: "Amina", country: "Cameroun", flag: "🇨🇲", niche: "Commerce & business", gender: "f", age: "40", look: "Amina, 40-year-old Cameroonian businesswoman, dark brown skin, confident mature face, short sleek bob haircut, pearl earrings, wearing a tailored emerald-green blazer over a patterned ndop-inspired top", bio: "Conseils aux commerçantes et avis francs sur le rapport qualité-prix.", voice: "assurée et pro" },
   { files: "creator_zara", id: "wanjiru", name: "Wanjiru", country: "Kenya", flag: "🇰🇪", niche: "Luxe & élégance", gender: "f", age: "29", look: "Wanjiru, 29-year-old Kenyan woman, rich brown skin, long elegant neck, sharp cheekbones, sleek low bun with a middle part, minimal gold jewelry, wearing a champagne satin slip dress with a cream tailored blazer", bio: "Finition éditoriale, révélations lentes et cadrages élégants.", voice: "raffinée" },
+  // The 10 creators below have a portrait and a character sheet but no intro video yet.
+  { files: "creator_coumba", id: "coumba", name: "Coumba", country: "Sénégal", flag: "🇸🇳", niche: "Mariage & cérémonies", gender: "f", age: "26", look: "Coumba, 26-year-old Senegalese woman, dark ebony skin, elegant oval face with defined cheekbones, warm genuine smile, waist-length goddess locs (bohemian locs with soft curly ends) swept over one shoulder with thin gold cuffs, gold drop earrings, wearing a champagne-gold lace tailored midi dress with a high neckline and delicate embroidery, gold strappy heels", bio: "Tenues de cérémonie, baptêmes et mariages : élégance et émotion.", voice: "douce et raffinée", intro: false },
+  { files: "creator_nadege", id: "nadege", name: "Nadège", country: "Cameroun", flag: "🇨🇲", niche: "Sport & fitness", gender: "f", age: "27", look: "Nadège, 27-year-old Cameroonian woman, medium-deep brown skin, athletic toned build, defined jawline, bright confident smile, sleek high braided ponytail (one long braid down her back) with laid edges, small gold stud earrings, wearing a lilac zip-up training jacket with a white stripe, matching lilac leggings and white sneakers", bio: "Routines sport, compléments et tenues de training, énergie à fond.", voice: "énergique et motivante", intro: false },
+  { files: "creator_binta", id: "binta", name: "Binta", country: "Guinée", flag: "🇬🇳", niche: "Bijoux & accessoires", gender: "f", age: "25", look: "Binta, 25-year-old Guinean woman, deep dark-brown skin, heart-shaped face with high cheekbones, playful closed-lip smile, short tapered natural coils dyed honey blonde, oversized gold hoop earrings and layered gold chain necklaces, bold berry lipstick, wearing a fuchsia-pink satin puff-sleeve blouse tucked into high-waisted black wide-leg trousers, gold strappy sandals", bio: "Bijoux, sacs et accessoires en gros plan, avec beaucoup de style.", voice: "pétillante et chic", intro: false },
+  { files: "creator_ange", id: "ange", name: "Ange", country: "Côte d'Ivoire", flag: "🇨🇮", niche: "Ongles & beauté des mains", gender: "f", age: "23", look: "Ange, 23-year-old Ivorian woman, warm medium-brown skin, soft oval face, sweet open smile, long silky jet-black straight hair with a middle part falling past her chest, small gold huggie earrings, long almond nails in glossy baby pink, soft glam makeup with glossy pink lips, wearing a baby-pink ribbed knit sweater with a matching baby-pink knit midi skirt and white sneakers", bio: "Nail art, soins des mains et unboxings girly, très gros plans.", voice: "douce et girly", intro: false },
+  { files: "creator_rokhaya", id: "rokhaya", name: "Rokhaya", country: "Sénégal", flag: "🇸🇳", niche: "Maternité & bébé", gender: "f", age: "31", look: "Rokhaya, 31-year-old Senegalese woman, dark brown skin, serene round-oval face, gentle motherly smile, traditional Fulani braids with a center braid, long braids decorated with small amber beads, cowrie shells and silver rings, small silver earrings, wearing a flowing full-length white cotton boubou with rich gold embroidery at the neckline, white trousers and gold flat sandals", bio: "Produits bébé et maman testés à la maison, conseils de grande sœur.", voice: "tendre et rassurante", intro: false },
+  { files: "creator_esther", id: "esther", name: "Esther", country: "RD Congo", flag: "🇨🇩", niche: "Musique & danse", gender: "f", age: "24", look: "Esther, 24-year-old Congolese woman from Kinshasa, rich dark-brown skin, expressive lively face with defined cheekbones, big joyful laughing smile, large voluminous round natural afro with a wide orange satin headband, chunky gold hoop earrings, wearing a bright orange ribbed crop top under an open blue-orange-yellow wax-print shirt, high-waisted wide-leg trousers in the same wax print and white sneakers", bio: "Danse, sons du moment et transitions rythmées, le produit dans le flow.", voice: "très expressive et joyeuse", intro: false },
+  { files: "creator_laetitia", id: "laetitia", name: "Laetitia", country: "Gabon", flag: "🇬🇦", niche: "Parfums & senteurs", gender: "f", age: "29", look: "Laetitia, 29-year-old Gabonese woman, deep brown skin with cool undertones, elegant long face with sculpted cheekbones, soft sophisticated half-smile, chin-length bouncy curly bob with glossy defined ringlets and a deep side part, pearl drop earrings, thin gold chain, dark berry lipstick and subtle smoky eyes, wearing a burgundy silk slip midi dress with nude strappy heels", bio: "Parfums, encens et huiles : révélations lentes et ambiance sensuelle.", voice: "veloutée et posée", intro: false },
+  { files: "creator_sali", id: "sali", name: "Sali", country: "Burkina Faso", flag: "🇧🇫", niche: "Déco & intérieur", gender: "f", age: "32", look: "Sali, 32-year-old Burkinabè woman, dark brown skin, calm oval face with mature features, warm relaxed smile, neat straight-back cornrows woven with thin gold thread gathered into a low chignon bun, small round wooden earrings, a stack of carved wooden bangles on one wrist, natural minimal makeup, wearing a terracotta-orange linen jumpsuit with a wide collar and tan leather flat sandals", bio: "Déco, meubles et objets artisanaux mis en scène dans un intérieur chaleureux.", voice: "calme et inspirante", intro: false },
+  { files: "creator_maimouna", id: "maimouna", name: "Maïmouna", country: "Mali", flag: "🇲🇱", niche: "Voyage & découverte", gender: "f", age: "28", look: "Maïmouna, 28-year-old Malian woman, medium-dark brown skin, oval face with high cheekbones, adventurous bright smile, two long jumbo feed-in braids falling over both shoulders down to her waist, small gold hoop earrings, light natural makeup, wearing a knee-length belted khaki safari shirt dress with rolled sleeves, a colorful bogolan-pattern scarf loosely tied around her neck and brown leather ankle boots", bio: "Vlogs de voyage, hôtels, transport et bons plans à travers l'Afrique.", voice: "curieuse et entraînante", intro: false },
+  { files: "creator_princesse", id: "princesse", name: "Princesse", country: "Togo", flag: "🇹🇬", niche: "Sneakers & streetwear", gender: "f", age: "22", look: "Princesse, 22-year-old Togolese woman, dark brown skin, defined cheekbones and a pointed chin, cool confident smirk, long passion twists dyed copper-ginger falling past her shoulders with a few gold cuffs, gold nameplate necklace and small gold hoops, wearing an oversized cropped light-wash denim jacket over a white ribbed tank top, beige cargo pants and chunky white sneakers", bio: "Sneakers, streetwear et looks du jour, ton cool et direct.", voice: "cool et directe", intro: false },
 ];
 
 export const actorPortrait = (a: Actor) => `/creators/${a.files}/portrait.jpg`;
@@ -69,6 +82,16 @@ export function actorColor(actor: Actor): string {
 export function suggestActor(text: string): Actor {
   const t = text.toLowerCase();
   const rules: Array<[RegExp, string]> = [
+    [/ongle|nail|manucure|vernis/, "ange"],
+    [/mariage|c[eé]r[eé]monie|bapt[eê]me|mari[eé]e/, "coumba"],
+    [/sport|fitness|gym|muscu|prot[eé]ine|training|yoga/, "nadege"],
+    [/b[eé]b[eé]|bebe|maman|maternit|couche|biberon|grossesse/, "rokhaya"],
+    [/parfum|senteur|encens|fragrance/, "laetitia"],
+    [/sneaker|basket|streetwear|casquette/, "princesse"],
+    [/voyage|h[oô]tel|vol |billet|tourisme|valise/, "maimouna"],
+    [/danse|musique|son |chanson|dj/, "esther"],
+    [/d[eé]co|canap|lampe|rideau|tapis|int[eé]rieur/, "sali"],
+    [/bijou|boucle|collier|bracelet|sac [aà] main|accessoire/, "binta"],
     [/perruque|coiff|tresse|lace|wig/, "nneka"],
     [/karit|savon|cr[eè]me|beaut|peau|maquill|cosm/, "aicha"],
     [/t[eé]l[eé]phone|iphone|samsung|tech|ordinateur|pc|laptop|écouteur|ecouteur/, "kofi"],

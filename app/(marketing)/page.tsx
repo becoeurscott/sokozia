@@ -92,7 +92,7 @@ export default function LandingPage() {
         <div className="mt-8 grid gap-5 md:grid-cols-3">
           {[
             [MessageCircle, "Parle de ton produit", "Décris-le, colle un lien, envoie tes photos. Awa prépare le brief en quelques secondes."],
-            [Users, "Choisis ton créateur et le lieu", "16 créateurs africains. Boutique, marché, salon… le créateur garde le même visage dans toutes tes pubs."],
+            [Users, "Choisis ton créateur et le lieu", "26 créateurs africains. Boutique, marché, salon… le créateur garde le même visage dans toutes tes pubs."],
             [Clapperboard, "Valide le script et crée", "15 ou 30 secondes, tournée avec Seedance 2.0. Le prix s'affiche avant de payer, la vidéo apparaît dans la conversation."],
           ].map(([Icon, t, d], i) => {
             const I = Icon as typeof MessageCircle;

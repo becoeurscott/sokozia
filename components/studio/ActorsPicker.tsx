@@ -13,6 +13,7 @@ import { Check, Play, Square } from "lucide-react";
 export function CreatorCard({ actor, active, onSelect }: { actor: Actor; active?: boolean; onSelect?: (a: Actor) => void }) {
   const video = React.useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = React.useState(false);
+  const hasIntro = actor.intro !== false;
 
   React.useEffect(() => {
     const stop = (e: Event) => {
@@ -42,27 +43,34 @@ export function CreatorCard({ actor, active, onSelect }: { actor: Actor; active?
       className={`group relative overflow-hidden rounded-2xl border text-left transition ${active ? "border-brand ring-2 ring-brand/30" : "border-line"} bg-card`}
     >
       <div className="relative aspect-[9/16] w-full bg-hover">
-        <video
-          ref={video}
-          src={actorIntro(actor)}
-          poster={actorPortrait(actor)}
-          preload="none"
-          playsInline
-          className="h-full w-full object-cover"
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-          onEnded={() => setPlaying(false)}
-        />
-        <span
-          role="button"
-          tabIndex={0}
-          aria-label={playing ? `Arrêter la présentation de ${actor.name}` : `Écouter ${actor.name}`}
-          onClick={toggle}
-          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && toggle(e as unknown as React.MouseEvent)}
-          className="absolute left-2 top-2 flex h-8 items-center gap-1 rounded-pill bg-ink/70 px-2.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-ink"
-        >
-          {playing ? <Square className="h-3 w-3" /> : <Play className="h-3 w-3" />} {playing ? "Stop" : "Écouter"}
-        </span>
+        {hasIntro ? (
+          <video
+            ref={video}
+            src={actorIntro(actor)}
+            poster={actorPortrait(actor)}
+            preload="none"
+            playsInline
+            className="h-full w-full object-cover"
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            onEnded={() => setPlaying(false)}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={actorPortrait(actor)} alt="" className="h-full w-full object-cover" loading="lazy" />
+        )}
+        {hasIntro && (
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label={playing ? `Arrêter la présentation de ${actor.name}` : `Écouter ${actor.name}`}
+            onClick={toggle}
+            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && toggle(e as unknown as React.MouseEvent)}
+            className="absolute left-2 top-2 flex h-8 items-center gap-1 rounded-pill bg-ink/70 px-2.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-ink"
+          >
+            {playing ? <Square className="h-3 w-3" /> : <Play className="h-3 w-3" />} {playing ? "Stop" : "Écouter"}
+          </span>
+        )}
         {active && (
           <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">
             <Check className="h-3.5 w-3.5" />

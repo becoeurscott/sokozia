@@ -1,7 +1,7 @@
 # Sokozia
 
 Studio de vidéos pub UGC par IA, pour les commerces d'Afrique francophone.
-Chat-style studio (une seule boîte de prompt, "Créer la vidéo"), 16 créateurs
+Chat-style studio (une seule boîte de prompt, "Créer la vidéo"), 26 créateurs
 africains. Claude est la directrice de création (script + mise en scène),
 Seedance 2.0 tourne la vidéo, en 15 ou 30 s. Paiement à la vidéo par Mobile
 Money : pas de pack, pas d'abonnement, pas de solde.
@@ -66,7 +66,7 @@ gateway InsForge, utilisé pour Awa seulement si `ANTHROPIC_API_KEY` est absente
 ## Mettre en place Higgsfield (vidéo)
 
 1. Crée une clé dans console.higgsfield.ai → `HF_API_KEY_ID`, `HF_API_KEY_SECRET`.
-2. Les 16 créateurs sont dans `public/creators/<dossier>/` : `portrait.jpg`
+2. Les 26 créateurs sont dans `public/creators/<dossier>/` : `portrait.jpg`
    (cartes), `intro.mp4` (présentation avec voix) et `sheet.jpg`, la fiche
    personnage envoyée à Seedance comme référence d'identité à chaque vidéo.
    Ne les régénère pas : changer une fiche change le visage du créateur.
@@ -141,12 +141,12 @@ app/api              auth, threads, generations, orders, uploads, webhooks
 components/studio    Sidebar, Composer, BriefCard, VideoCard, dialogs…
 lib/models.ts        Seedance 2.0, durées 15/30 s, prix
 lib/pricing.ts       devises pawaPay par pays
-lib/actors.ts        16 créateurs
+lib/actors.ts        26 créateurs
 lib/agent/brief.ts   Awa (Claude) : brief, script, plans par clip
 lib/video/concat.ts  assemblage des clips (30 s)
 lib/providers/*      higgsfield.ts, pawapay.ts, mock.ts
 lib/services/*       generations, orders
 lib/db/*             InsForge ou store JSON local
 insforge/migrations  schéma SQL
-public/creators      16 créateurs : portrait, intro vidéo, fiche personnage
+public/creators      26 créateurs : portrait, fiche personnage, intro vidéo (16 premiers)
 ```
