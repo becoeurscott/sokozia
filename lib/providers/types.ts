@@ -53,7 +53,7 @@ export interface PaymentCheck {
 }
 
 export interface PaymentProvider {
-  name: "mock" | "pawapay";
+  name: "mock" | "pawapay" | "stripe";
   createCheckout(input: CheckoutInput): Promise<CheckoutResult>;
   checkStatus(order: Order): Promise<PaymentCheck>;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, Pencil, Clock } from "lucide-react";
+import { Sparkles, Pencil, Clock, CreditCard, Smartphone } from "lucide-react";
 import { ACTORS, getActor } from "@/lib/actors";
 import { DURATIONS, MODEL, closestDuration, formatFcfa, isDuration, videoPrice, type Duration } from "@/lib/models";
 import { COUNTRY_CURRENCY, DEFAULT_COUNTRY, PAY_COUNTRIES, isPayCountry, localAmount } from "@/lib/pricing";
@@ -11,6 +11,7 @@ import { ActorsGrid } from "./ActorsPicker";
 import { Spinner } from "@/components/ui/Spinner";
 
 export interface LaunchInput {
+  method: PayMethod;
   /** ISO3 country of the Mobile Money account that pays. */
   country: string;
   duration: Duration;
@@ -39,17 +40,22 @@ export function BriefCard({
   const actor = getActor(actorId) ?? ACTORS[0];
   const price = videoPrice(duration);
   const [country, setCountry] = React.useState(DEFAULT_COUNTRY);
-  React.useEffect(() => setCountry(savedCountry()), []);
+  const [method, setMethod] = React.useState<PayMethod>("mobile");
+  React.useEffect(() => {
+    setCountry(savedCountry());
+    setMethod(savedMethod());
+  }, []);
   const local = localAmount(country, price);
-  const fcfa = local.currency === "XAF" || local.currency === "XOF";
+  // Cards are charged in FCFA (XOF) whatever the country.
+  const fcfa = method === "card" || local.currency === "XAF" || local.currency === "XOF";
 
   function chooseCountry(c: string) {
     setCountry(c);
-    try {
-      localStorage.setItem(COUNTRY_KEY, c);
-    } catch {
-      /* private mode: the choice just isn't remembered */
-    }
+    remember(COUNTRY_KEY, c);
+  }
+  function chooseMethod(m: PayMethod) {
+    setMethod(m);
+    remember(METHOD_KEY, m);
   }
 
   return (
@@ -142,8 +148,30 @@ export function BriefCard({
         {!locked && (
           <div className="flex flex-col gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-muted">
+              <div className="mb-2 inline-flex rounded-pill border border-line bg-bg p-0.5" role="radiogroup" aria-label="Moyen de paiement">
+                {(
+                  [
+                    ["mobile", "Mobile Money", Smartphone],
+                    ["card", "Carte bancaire", CreditCard],
+                  ] as const
+                ).map(([m, label, Icon]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="radio"
+                    aria-checked={method === m}
+                    onClick={() => chooseMethod(m)}
+                    className={`flex h-8 items-center gap-1.5 rounded-pill px-3 text-xs font-semibold transition ${method === m ? "bg-card text-ink shadow-sm" : "text-muted hover:text-ink"}`}
+                  >
+                    <Icon className="h-3.5 w-3.5" /> {label}
+                  </button>
+                ))}
+              </div>
+              {method === "card" ? (
+                <span className="block text-xs">Visa, Mastercard · paiement sécurisé par Stripe</span>
+              ) : (
               <label className="flex items-center gap-2">
-                Mobile Money
+                Pays
                 <select
                   value={country}
                   onChange={(e) => chooseCountry(e.target.value)}
@@ -157,13 +185,14 @@ export function BriefCard({
                   ))}
                 </select>
               </label>
+              )}
               <span className="mt-1 block text-xs">
                 {fcfa ? formatFcfa(price) : `${local.amount.toLocaleString("fr-FR")} ${local.currency} (≈ ${formatFcfa(price)})`} · une vidéo qui échoue est relancée sans frais.
               </span>
             </div>
             <button
               disabled={busy || script.trim().length < 10}
-              onClick={() => onLaunch({ country, duration, actorId, script: script.trim() })}
+              onClick={() => onLaunch({ method, country, duration, actorId, script: script.trim() })}
               className="flex h-11 items-center justify-center gap-2 rounded-pill bg-brand px-5 text-sm font-semibold text-white transition hover:bg-[#d24f0a] disabled:opacity-50"
             >
               {busy && <Spinner />}
@@ -181,6 +210,26 @@ function Label({ children }: { children: React.ReactNode }) {
 }
 
 const COUNTRY_KEY = "sokozia:pay-country";
+const METHOD_KEY = "sokozia:pay-method";
+
+export type PayMethod = "mobile" | "card";
+
+function remember(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* private mode: the choice just isn't remembered */
+  }
+}
+
+/** Mobile Money or card, as last picked (Mobile Money by default). */
+export function savedMethod(): PayMethod {
+  try {
+    return localStorage.getItem(METHOD_KEY) === "card" ? "card" : "mobile";
+  } catch {
+    return "mobile";
+  }
+}
 
 /** The Mobile Money country the user last picked (Cameroun by default). */
 export function savedCountry(): string {

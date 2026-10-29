@@ -64,11 +64,22 @@ export function PaymentReturn() {
               Retour au studio
             </Button>
           </>
+        ) : params.get("cancel") && order?.status === "pending" ? (
+          <>
+            <X className="mx-auto h-10 w-10 text-muted" />
+            <h1 className="mt-3 text-xl font-extrabold">Paiement annulé</h1>
+            <p className="mt-1 text-sm text-muted">Rien n&apos;a été prélevé. Tu peux relancer la vidéo depuis la conversation.</p>
+            <Button href={dest} className="mt-6">
+              Retour à la conversation
+            </Button>
+          </>
         ) : !order || order.status === "pending" ? (
           <>
             <Spinner className="mx-auto h-8 w-8 text-brand" />
             <h1 className="mt-3 text-xl font-extrabold">On vérifie ton paiement…</h1>
-            <p className="mt-1 text-sm text-muted">Confirme sur ton téléphone si ce n&apos;est pas déjà fait. {order ? formatFcfa(order.amount) : ""}</p>
+            <p className="mt-1 text-sm text-muted">
+              {order?.provider === "stripe" ? "Paiement par carte en cours de confirmation." : "Confirme sur ton téléphone si ce n'est pas déjà fait."} {order ? formatFcfa(order.amount) : ""}
+            </p>
             {tries > 8 && (
               <p className="mt-4 rounded-xl bg-bg p-3 text-xs text-muted">
                 <Clock className="mr-1 inline h-3 w-3" />

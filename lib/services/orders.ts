@@ -1,7 +1,7 @@
 import "server-only";
 import { getDb, now } from "../db";
 import type { Generation, Order, User } from "../types";
-import { paymentProvider } from "../providers";
+import { paymentProvider, providerFor, type PayMethod } from "../providers";
 import type { PaymentCheck } from "../providers/types";
 import { appUrl } from "../auth";
 import { DEFAULT_COUNTRY, isPayCountry, localAmount } from "../pricing";
@@ -11,10 +11,10 @@ import { submitGeneration } from "./generations";
  * Pay-per-video: one order pays exactly one generation. The amount is the
  * price stored on the generation when the brief was launched.
  */
-export async function createOrder(input: { user: User; generation: Generation; country?: string | null }): Promise<{ order: Order; redirectUrl: string }> {
+export async function createOrder(input: { user: User; generation: Generation; country?: string | null; method?: PayMethod }): Promise<{ order: Order; redirectUrl: string }> {
   const db = await getDb();
   const g = input.generation;
-  const provider = paymentProvider();
+  const provider = paymentProvider(input.method);
   const country = isPayCountry(input.country) ? input.country : DEFAULT_COUNTRY;
 
   const order = await db.insert<Order>("orders", {
@@ -23,7 +23,7 @@ export async function createOrder(input: { user: User; generation: Generation; c
     duration: g.duration,
     amount: g.price,
     // amount stays the FCFA price; the local amount charged is derived from it.
-    currency: localAmount(country, g.price).currency,
+    currency: provider.name === "stripe" ? "XOF" : localAmount(country, g.price).currency,
     country,
     provider: provider.name,
     checkout_code: null,
@@ -54,7 +54,7 @@ export async function syncOrder(order: Order): Promise<Order> {
   if (order.status !== "pending") return order;
   let check: PaymentCheck;
   try {
-    check = await paymentProvider().checkStatus(order);
+    check = await providerFor(order).checkStatus(order);
   } catch {
     return order;
   }

@@ -27,6 +27,7 @@ interface Body {
   script?: string;
   /** ISO3 country of the Mobile Money account. */
   country?: string;
+  method?: "mobile" | "card";
 }
 
 /**
@@ -74,6 +75,6 @@ export const POST = route(async (req: NextRequest) => {
   });
   await db.update<Thread>("threads", thread.id, { updated_at: now() });
 
-  const { redirectUrl } = await createOrder({ user, generation, country: body.country });
+  const { redirectUrl } = await createOrder({ user, generation, country: body.country, method: body.method === "card" ? "card" : "mobile" });
   return NextResponse.json({ generation: publicGeneration(generation), message: videoMsg, redirectUrl });
 });

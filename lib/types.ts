@@ -99,7 +99,7 @@ export interface Order {
   amount: number;
   currency: string;
   country: string | null;
-  provider: "mock" | "pawapay";
+  provider: "mock" | "pawapay" | "stripe";
   checkout_code: string | null;
   redirect_url: string | null;
   status: OrderStatus;

@@ -6,7 +6,7 @@ import { api } from "@/lib/client/api";
 import type { BriefContent, Generation, Message, Thread } from "@/lib/types";
 import { useStudio, type Draft, EMPTY_DRAFT } from "./StudioProvider";
 import { Composer } from "./Composer";
-import { BriefCard, savedCountry, type LaunchInput } from "./BriefCard";
+import { BriefCard, savedCountry, savedMethod, type LaunchInput } from "./BriefCard";
 import { VideoCard } from "./VideoCard";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -133,7 +133,7 @@ export function ThreadView({ threadId }: { threadId: string }) {
 
   async function pay(g: Pub) {
     try {
-      const { redirectUrl } = await api<{ redirectUrl: string }>("/api/orders/single", { method: "POST", json: { generationId: g.id, country: savedCountry() } });
+      const { redirectUrl } = await api<{ redirectUrl: string }>("/api/orders/single", { method: "POST", json: { generationId: g.id, country: savedCountry(), method: savedMethod() } });
       window.location.href = redirectUrl;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
