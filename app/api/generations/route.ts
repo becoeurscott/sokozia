@@ -23,6 +23,8 @@ interface Body {
   duration?: number;
   actorId?: string;
   script?: string;
+  /** ISO3 country of the Mobile Money account. */
+  country?: string;
 }
 
 /**
@@ -70,6 +72,6 @@ export const POST = route(async (req: NextRequest) => {
   });
   await db.update<Thread>("threads", thread.id, { updated_at: now() });
 
-  const { redirectUrl } = await createOrder({ user, generation });
+  const { redirectUrl } = await createOrder({ user, generation, country: body.country });
   return NextResponse.json({ generation: publicGeneration(generation), message: videoMsg, redirectUrl });
 });

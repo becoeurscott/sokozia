@@ -93,22 +93,34 @@ l'installation ; sinon renseigne `FFMPEG_PATH`.
    permet de changer de modèle.
 3. Sans clé : gateway InsForge si configuré, sinon un script modèle.
 
-## Mettre en place pawaPay (Mobile Money)
+## pawaPay (Mobile Money)
 
-1. Token API dans le dashboard pawaPay → `PAWAPAY_API_TOKEN`, `PAWAPAY_ENV=sandbox` puis `production`.
-2. Dans le dashboard, configure l'URL de callback : `https://sokozia.com/api/webhooks/pawapay`.
+Même compte pawaPay et même flux que l'app précédente, qui tournait déjà en
+production : **Payment Page v2**.
+
+1. `PAWAPAY_API_TOKEN` et `PAWAPAY_BASE_URL` (`https://api.sandbox.pawapay.io`
+   pour les tests, `https://api.pawapay.io` en production). Sur le site en
+   ligne, ces deux variables existent déjà dans l'environnement du déploiement
+   InsForge. Sans `PAWAPAY_BASE_URL`, `PAWAPAY_ENV=production` choisit la prod.
+2. URL de callback dans le dashboard pawaPay : `https://sokozia.com/api/pay/callback`
+   (celle de l'app précédente ; `/api/webhooks/pawapay` répond aussi).
 3. Test sandbox : numéro `237653456789` (MTN Cameroun) → COMPLETED,
    `237653456039` → PAYMENT_NOT_APPROVED (voir docs "test numbers").
 
-Flux : `POST /v2/checkouts` → redirection vers la page pawaPay → retour sur
-`/paiement/retour?order=…` qui sonde `/api/orders/:id` ; le callback et la
-sonde sont tous deux idempotents (table `webhook_events`). Seule la première
-transition vers `completed` lance la vidéo. Une vidéo payée qui échoue peut
-être relancée sans frais sur la même commande (`/api/generations/:id/retry`).
+Flux : la personne choisit le pays de son compte Mobile Money (8 pays activés
+sur le compte, dans `lib/pricing.ts`) → `POST /v2/paymentpage` avec
+`depositId` = id de la commande, le montant dans la monnaie du pays →
+redirection vers la page pawaPay → retour sur `/paiement/retour?order=…`.
+Le statut est **toujours** relu avec `GET /v2/deposits/{id}` (jamais le
+callback seul), et un paiement n'est accepté que si montant et monnaie sont
+exactement ceux demandés. Une page non payée expire (commande close après
+30 min). Seule la première transition vers `completed` lance la vidéo. Une
+vidéo payée qui échoue peut être relancée sans frais sur la même commande
+(`/api/generations/:id/retry`).
 
 Prix : `lib/models.ts` (`MODEL.prices`) : 2 540 FCFA les 15 s, 5 080 FCFA les 30 s
 (2× le coût Higgsfield au prix catalogue, arrondi à un nombre pair). Conversion par pays : `lib/pricing.ts` (XAF/XOF à
-parité, table fixe pour KES, NGN, CDF, GHS).
+parité, table fixe pour CDF et RWF).
 
 ## Déployer sur Hostinger
 

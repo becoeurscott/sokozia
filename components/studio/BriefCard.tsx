@@ -4,12 +4,15 @@ import * as React from "react";
 import { Sparkles, Pencil, Clock } from "lucide-react";
 import { ACTORS, getActor } from "@/lib/actors";
 import { DURATIONS, MODEL, closestDuration, formatFcfa, isDuration, videoPrice, type Duration } from "@/lib/models";
+import { COUNTRY_CURRENCY, DEFAULT_COUNTRY, PAY_COUNTRIES, isPayCountry, localAmount } from "@/lib/pricing";
 import type { BriefContent } from "@/lib/types";
 import { ActorAvatar } from "@/components/ui/ActorAvatar";
 import { ActorsGrid } from "./ActorsPicker";
 import { Spinner } from "@/components/ui/Spinner";
 
 export interface LaunchInput {
+  /** ISO3 country of the Mobile Money account that pays. */
+  country: string;
   duration: Duration;
   actorId: string;
   script: string;
@@ -35,6 +38,19 @@ export function BriefCard({
   const [pickActor, setPickActor] = React.useState(false);
   const actor = getActor(actorId) ?? ACTORS[0];
   const price = videoPrice(duration);
+  const [country, setCountry] = React.useState(DEFAULT_COUNTRY);
+  React.useEffect(() => setCountry(savedCountry()), []);
+  const local = localAmount(country, price);
+  const fcfa = local.currency === "XAF" || local.currency === "XOF";
+
+  function chooseCountry(c: string) {
+    setCountry(c);
+    try {
+      localStorage.setItem(COUNTRY_KEY, c);
+    } catch {
+      /* private mode: the choice just isn't remembered */
+    }
+  }
 
   return (
     <div className="fade-up w-full max-w-[640px] overflow-hidden rounded-2xl border border-line bg-card shadow-[0_10px_40px_-24px_rgba(29,26,22,.35)]">
@@ -126,12 +142,28 @@ export function BriefCard({
         {!locked && (
           <div className="flex flex-col gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-muted">
-              Paiement Mobile Money · <span className="font-semibold text-ink">{formatFcfa(price)}</span>
-              <span className="block text-xs">Une vidéo qui échoue est relancée sans frais.</span>
+              <label className="flex items-center gap-2">
+                Mobile Money
+                <select
+                  value={country}
+                  onChange={(e) => chooseCountry(e.target.value)}
+                  className="h-8 rounded-lg border border-line bg-card px-2 text-sm text-ink outline-none focus:border-brand"
+                  aria-label="Pays du compte Mobile Money"
+                >
+                  {PAY_COUNTRIES.map((c) => (
+                    <option key={c} value={c}>
+                      {COUNTRY_CURRENCY[c].flag} {COUNTRY_CURRENCY[c].label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span className="mt-1 block text-xs">
+                {fcfa ? formatFcfa(price) : `${local.amount.toLocaleString("fr-FR")} ${local.currency} (≈ ${formatFcfa(price)})`} · une vidéo qui échoue est relancée sans frais.
+              </span>
             </div>
             <button
               disabled={busy || script.trim().length < 10}
-              onClick={() => onLaunch({ duration, actorId, script: script.trim() })}
+              onClick={() => onLaunch({ country, duration, actorId, script: script.trim() })}
               className="flex h-11 items-center justify-center gap-2 rounded-pill bg-brand px-5 text-sm font-semibold text-white transition hover:bg-[#d24f0a] disabled:opacity-50"
             >
               {busy && <Spinner />}
@@ -146,4 +178,16 @@ export function BriefCard({
 
 function Label({ children }: { children: React.ReactNode }) {
   return <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">{children}</div>;
+}
+
+const COUNTRY_KEY = "sokozia:pay-country";
+
+/** The Mobile Money country the user last picked (Cameroun by default). */
+export function savedCountry(): string {
+  try {
+    const c = localStorage.getItem(COUNTRY_KEY);
+    return isPayCountry(c) ? c : DEFAULT_COUNTRY;
+  } catch {
+    return DEFAULT_COUNTRY;
+  }
 }

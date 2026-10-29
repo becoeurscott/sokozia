@@ -1,7 +1,7 @@
 import "server-only";
 import type { PaymentProvider, VideoProvider } from "./types";
 import { mockPayment, mockVideo } from "./mock";
-import { higgsfieldVideo } from "./higgsfield";
+import { hfCredentials, higgsfieldVideo } from "./higgsfield";
 import { pawapayPayment } from "./pawapay";
 
 export function isMock(): boolean {
@@ -9,7 +9,7 @@ export function isMock(): boolean {
 }
 
 export function videoProvider(): VideoProvider {
-  if (isMock() || !process.env.HF_API_KEY_ID) return mockVideo;
+  if (isMock() || !hfCredentials()) return mockVideo;
   return higgsfieldVideo;
 }
 

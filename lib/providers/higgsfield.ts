@@ -4,11 +4,19 @@ import { MAX_CLIP_SECONDS, MODEL } from "../models";
 
 const BASE = "https://api.higgsfield.ai";
 
-function authHeader(): string {
+/** "id:secret", from HF_CREDENTIALS (as the earlier app stored it) or the two separate keys. */
+export function hfCredentials(): string | null {
+  const joined = process.env.HF_CREDENTIALS;
+  if (joined && joined.includes(":")) return joined;
   const id = process.env.HF_API_KEY_ID;
   const secret = process.env.HF_API_KEY_SECRET;
-  if (!id || !secret) throw new Error("Higgsfield n'est pas configuré (HF_API_KEY_ID / HF_API_KEY_SECRET).");
-  return `Key ${id}:${secret}`;
+  return id && secret ? `${id}:${secret}` : null;
+}
+
+function authHeader(): string {
+  const c = hfCredentials();
+  if (!c) throw new Error("Higgsfield n'est pas configuré (HF_CREDENTIALS, ou HF_API_KEY_ID + HF_API_KEY_SECRET).");
+  return `Key ${c}`;
 }
 
 async function hf<T>(url: string, init: RequestInit = {}): Promise<T> {

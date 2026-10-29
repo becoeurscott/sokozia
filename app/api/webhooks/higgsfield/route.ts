@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import { getDb, now } from "@/lib/db";
 import type { Generation, WebhookEvent } from "@/lib/types";
 import { applyResult } from "@/lib/services/generations";
@@ -42,10 +42,9 @@ export async function POST(req: NextRequest) {
     : await db.find<Generation>("generations", { provider_request_id: body.request_id });
   if (!generation) return NextResponse.json({ ok: true, unknown: true });
 
-  // Finish the copy to storage after responding, so Higgsfield gets a fast 2xx.
-  const work = applyResult(generation, mapStatus(body.status, body.payload?.video?.url ?? null, body.error), body.request_id).catch((e) =>
-    console.error("[webhook:higgsfield]", e),
-  );
-  if (process.env.NODE_ENV !== "production") await work;
+  // Finish the copy to storage (and the 30 s join) after responding, so
+  // Higgsfield gets a fast 2xx; after() keeps the function alive meanwhile.
+  const result = mapStatus(body.status, body.payload?.video?.url ?? null, body.error);
+  after(() => applyResult(generation, result, body.request_id).catch((e) => console.error("[webhook:higgsfield]", e)));
   return NextResponse.json({ ok: true });
 }
