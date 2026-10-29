@@ -6,6 +6,8 @@ import { buildBrief } from "@/lib/agent/brief";
 import type { Duration } from "@/lib/models";
 
 export const dynamic = "force-dynamic";
+// Claude briefs, Higgsfield submits and the 30 s join can take longer than the default limit.
+export const maxDuration = 60;
 
 type Ctx = { params: Promise<{ id: string }> };
 

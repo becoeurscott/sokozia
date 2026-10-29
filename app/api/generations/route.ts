@@ -8,6 +8,8 @@ import { createGeneration, publicGeneration } from "@/lib/services/generations";
 import { createOrder } from "@/lib/services/orders";
 
 export const dynamic = "force-dynamic";
+// Claude briefs, Higgsfield submits and the 30 s join can take longer than the default limit.
+export const maxDuration = 60;
 
 /** Library: the user's generations, newest first. */
 export const GET = route(async () => {

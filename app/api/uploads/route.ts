@@ -5,6 +5,8 @@ import type { Upload } from "@/lib/types";
 import { newKey, putFile } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
+// Claude briefs, Higgsfield submits and the 30 s join can take longer than the default limit.
+export const maxDuration = 60;
 
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/quicktime", "video/webm", "audio/mpeg", "audio/wav", "audio/x-m4a", "audio/aac"];
 const MAX_BYTES = 25 * 1024 * 1024;

@@ -5,6 +5,8 @@ import type { Generation, Message, Order } from "@/lib/types";
 import { publicGeneration, retryFailedGeneration } from "@/lib/services/generations";
 
 export const dynamic = "force-dynamic";
+// Claude briefs, Higgsfield submits and the 30 s join can take longer than the default limit.
+export const maxDuration = 60;
 
 type Ctx = { params: Promise<{ id: string }> };
 

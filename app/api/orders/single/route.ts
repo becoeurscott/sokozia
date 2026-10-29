@@ -5,6 +5,8 @@ import type { Generation } from "@/lib/types";
 import { createOrder } from "@/lib/services/orders";
 
 export const dynamic = "force-dynamic";
+// Claude briefs, Higgsfield submits and the 30 s join can take longer than the default limit.
+export const maxDuration = 60;
 
 /** (Re)creates the checkout for a generation still waiting for payment. */
 export const POST = route(async (req: NextRequest) => {

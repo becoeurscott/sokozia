@@ -5,6 +5,8 @@ import { applyResult } from "@/lib/services/generations";
 import { mapStatus } from "@/lib/providers/higgsfield";
 
 export const dynamic = "force-dynamic";
+// Claude briefs, Higgsfield submits and the 30 s join can take longer than the default limit.
+export const maxDuration = 60;
 
 interface HfWebhook {
   request_id?: string;

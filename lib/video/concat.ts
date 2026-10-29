@@ -37,6 +37,18 @@ export async function concatClips(urls: string[]): Promise<Buffer> {
   }
 }
 
+/** First line of `ffmpeg -version`, for the /api/health check. */
+export async function ffmpegVersion(): Promise<string> {
+  const bin = await ffmpegPath();
+  return new Promise((resolve, reject) => {
+    const p = spawn(bin, ["-version"], { stdio: ["ignore", "pipe", "ignore"] });
+    let out = "";
+    p.stdout.on("data", (d) => (out += String(d)));
+    p.on("error", reject);
+    p.on("close", (code) => (code === 0 ? resolve(out.split("\n")[0].trim()) : reject(new Error(`exit ${code}`))));
+  });
+}
+
 async function ffmpegPath(): Promise<string> {
   if (process.env.FFMPEG_PATH) return process.env.FFMPEG_PATH;
   const mod = (await import("ffmpeg-static")) as unknown as { default?: string | null };

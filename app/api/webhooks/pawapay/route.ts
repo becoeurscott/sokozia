@@ -4,6 +4,8 @@ import type { Order, WebhookEvent } from "@/lib/types";
 import { syncOrder } from "@/lib/services/orders";
 
 export const dynamic = "force-dynamic";
+// Claude briefs, Higgsfield submits and the 30 s join can take longer than the default limit.
+export const maxDuration = 60;
 
 /**
  * pawaPay deposit callback. Only the depositId (= our order id) is read;
