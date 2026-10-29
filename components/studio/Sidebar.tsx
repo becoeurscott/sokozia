@@ -5,11 +5,14 @@ import { usePathname } from "next/navigation";
 import { SquarePen, Library, Boxes, BookOpen, UserRoundPlus, LogIn, PanelLeftClose, PanelRightOpen, X, LogOut } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { useStudio } from "./StudioProvider";
+import { useWallet } from "@/lib/client/useWallet";
+import { formatFcfa } from "@/lib/models";
 
 export function Sidebar() {
   const studio = useStudio();
   const pathname = usePathname();
   const { collapsed, setCollapsed, sidebarOpen, setSidebarOpen, user, threads } = studio;
+  const { balance } = useWallet(Boolean(user));
 
   const item = (active: boolean) =>
     `group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition ${active ? "bg-hover text-ink" : "text-ink/80 hover:bg-hover hover:text-ink"} ${collapsed ? "justify-center px-0" : ""}`;
@@ -76,7 +79,7 @@ export function Sidebar() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-soft text-sm font-bold text-brand">{(user.name || user.email).charAt(0).toUpperCase()}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{user.name || user.email}</span>
-                  <span className="block text-xs text-muted">Mon compte · paiements</span>
+                  <span className="block text-xs text-muted">{balance === null ? "Mon compte · paiements" : `Solde : ${formatFcfa(balance)}`}</span>
                 </span>
               </Link>
             )}

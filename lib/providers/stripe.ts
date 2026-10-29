@@ -30,12 +30,13 @@ export const stripeCardPayment: PaymentProvider = {
     const client = createServerClient({ cookies: await cookies() });
     const { data, error } = await client.payments.stripe.createCheckoutSession(ENV, {
       mode: "payment",
-      lineItems: [{ priceId: PRICES[duration], quantity: 1 }],
+      // A top-up buys N × the 15 s price.
+      lineItems: [{ priceId: PRICES[duration], quantity: order.purpose === "topup" ? Math.max(1, order.units ?? 1) : 1 }],
       successUrl: returnUrl,
       cancelUrl: `${returnUrl}&cancel=1`,
       subject: { type: "user", id: order.user_id },
       customerEmail: userEmail || null,
-      metadata: { sz_order_id: order.id, duration: String(order.duration) },
+      metadata: { sz_order_id: order.id, duration: String(order.duration), purpose: order.purpose ?? "video" },
       idempotencyKey: `sz-order:${order.id}`,
     });
     const url = data?.checkoutSession.url;
@@ -51,7 +52,8 @@ export const stripeCardPayment: PaymentProvider = {
       // Only the exact price of this order counts. Orders opened before card
       // payments moved to euros were charged in FCFA (XOF) at order.amount.
       const eur = (order.currency ?? "").toUpperCase() === "EUR";
-      const expected = eur ? cardPriceCents(order.duration as Duration) : order.amount;
+      const units = order.purpose === "topup" ? Math.max(1, order.units ?? 1) : 1;
+      const expected = eur ? cardPriceCents(order.duration as Duration) * units : order.amount;
       const currency = eur ? CURRENCY : "xof";
       if (Number(r.amount) !== expected || (r.currency ?? "").toLowerCase() !== currency) {
         return { status: "failed", failure: `Montant reçu (${r.amount} ${r.currency}) différent du prix.`, raw: r };

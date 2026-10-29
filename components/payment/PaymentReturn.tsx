@@ -9,6 +9,7 @@ import { Logo } from "@/components/ui/Logo";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { cardPriceCents, formatEur, formatFcfa } from "@/lib/models";
+import { topupCardCents } from "@/lib/wallet";
 
 /**
  * Landing after the Mobile Money page. Polls the order until it settles,
@@ -43,13 +44,14 @@ export function PaymentReturn() {
     };
   }, [orderId]);
 
+  const topup = order?.purpose === "topup";
+  const dest = topup ? "/compte#portefeuille" : order?.thread_id ? `/studio/c/${order.thread_id}` : "/studio";
+
   React.useEffect(() => {
     if (order?.status !== "completed") return;
-    const t = setTimeout(() => router.replace(order.thread_id ? `/studio/c/${order.thread_id}` : "/studio"), 1500);
+    const t = setTimeout(() => router.replace(dest), 1500);
     return () => clearTimeout(t);
-  }, [order, router]);
-
-  const dest = order?.thread_id ? `/studio/c/${order.thread_id}` : "/studio";
+  }, [order, router, dest]);
 
   return (
     <main className="welcome-glow flex min-h-dvh flex-col items-center justify-center px-4">
@@ -68,7 +70,7 @@ export function PaymentReturn() {
           <>
             <X className="mx-auto h-10 w-10 text-muted" />
             <h1 className="mt-3 text-xl font-extrabold">Paiement annulé</h1>
-            <p className="mt-1 text-sm text-muted">Rien n&apos;a été prélevé. Tu peux relancer la vidéo depuis la conversation.</p>
+            <p className="mt-1 text-sm text-muted">Rien n&apos;a été prélevé. {topup ? "Tu peux recharger à nouveau depuis ton compte." : "Tu peux relancer la vidéo depuis la conversation."}</p>
             <Button href={dest} className="mt-6">
               Retour à la conversation
             </Button>
@@ -79,12 +81,16 @@ export function PaymentReturn() {
             <h1 className="mt-3 text-xl font-extrabold">On vérifie ton paiement…</h1>
             <p className="mt-1 text-sm text-muted">
               {order?.provider === "stripe" ? "Paiement par carte en cours de confirmation." : "Confirme sur ton téléphone si ce n'est pas déjà fait."}{" "}
-              {order ? (order.provider === "stripe" && (order.duration === 15 || order.duration === 30) ? formatEur(cardPriceCents(order.duration)) : formatFcfa(order.amount)) : ""}
+              {order
+                ? order.provider === "stripe" && (order.currency ?? "").toUpperCase() === "EUR"
+                  ? formatEur(topup ? topupCardCents(order.units ?? 1) : cardPriceCents(order.duration === 30 ? 30 : 15))
+                  : formatFcfa(order.amount)
+                : ""}
             </p>
             {tries > 8 && (
               <p className="mt-4 rounded-xl bg-bg p-3 text-xs text-muted">
                 <Clock className="mr-1 inline h-3 w-3" />
-                Ça prend plus de temps que prévu. Tu peux revenir au studio : ta vidéo partira dès confirmation.
+                {topup ? "Ça prend plus de temps que prévu. Ton solde sera crédité dès confirmation." : "Ça prend plus de temps que prévu. Tu peux revenir au studio : ta vidéo partira dès confirmation."}
               </p>
             )}
             <Button href={dest} variant="outline" className="mt-6">
@@ -97,7 +103,7 @@ export function PaymentReturn() {
               <Check className="h-6 w-6" />
             </span>
             <h1 className="mt-3 text-xl font-extrabold">Paiement confirmé</h1>
-            <p className="mt-1 text-sm text-muted">Ta vidéo est en cours de création.</p>
+            <p className="mt-1 text-sm text-muted">{topup ? `${formatFcfa(order.amount)} ajoutés à ton solde.` : "Ta vidéo est en cours de création."}</p>
             <Button href={dest} className="mt-6">
               Continuer
             </Button>

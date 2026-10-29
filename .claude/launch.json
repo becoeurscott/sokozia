@@ -1,6 +1,21 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "sokozia-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 3000 }
+    { "name": "sokozia-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 3000 },
+    {
+      "name": "sokozia-local-mock",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "-p", "3011"],
+      "port": 3011,
+      "autoPort": false,
+      "env": {
+        "NEXT_PUBLIC_INSFORGE_URL": "",
+        "INSFORGE_API_KEY": "",
+        "NEXT_PUBLIC_INSFORGE_ANON_KEY": "",
+        "MOCK_PROVIDERS": "1",
+        "NEXT_PUBLIC_APP_URL": "http://localhost:3011",
+        "OPENROUTER_API_KEY": ""
+      }
+    }
   ]
 }

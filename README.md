@@ -3,8 +3,11 @@
 Studio de vidéos pub UGC par IA, pour les commerces d'Afrique francophone.
 Chat-style studio (une seule boîte de prompt, "Créer la vidéo"), 36 créateurs
 africains. Claude est la directrice de création (script + mise en scène),
-Seedance 2.0 tourne la vidéo, en 15 ou 30 s. Paiement à la vidéo par Mobile
-Money : pas de pack, pas d'abonnement, pas de solde.
+Seedance 2.0 tourne la vidéo, en 15 ou 30 s. Paiement à la vidéo (Mobile
+Money ou carte) ou avec le portefeuille : un solde en FCFA rechargé par
+packs de 2, 5 ou 10 vidéos, et l'historique des transactions dans « Mon
+compte » (`lib/services/wallet.ts`, migration `20261029151536_sz-wallet.sql`).
+Un paiement reçu pour une vidéo déjà payée est crédité sur le solde.
 
 - **Front / API** : Next.js 15 (App Router), Tailwind 4, lucide-react
 - **Auth, base, fichiers** : [InsForge](https://insforge.dev) (`@insforge/sdk`)

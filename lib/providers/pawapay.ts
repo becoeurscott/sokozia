@@ -49,7 +49,7 @@ interface DepositResponse {
 
 /** 4–22 letters, digits or spaces (pawaPay's customerMessage rule). */
 function customerMessage(order: Order): string {
-  return `Sokozia video ${order.duration}s`.replace(/[^A-Za-z0-9 ]/g, "").slice(0, 22);
+  return (order.purpose === "topup" ? "Sokozia recharge" : `Sokozia video ${order.duration}s`).replace(/[^A-Za-z0-9 ]/g, "").slice(0, 22);
 }
 
 /** pawaPay's reasons, in words a customer understands. */
@@ -71,7 +71,7 @@ export const pawapayPayment: PaymentProvider = {
       returnUrl,
       amountDetails: { amount: String(amount), currency },
       country,
-      reason: `Vidéo pub Sokozia ${order.duration} s`,
+      reason: order.purpose === "topup" ? `Recharge Sokozia ${order.units ?? 1} vidéos` : `Vidéo pub Sokozia ${order.duration} s`,
       customerMessage: customerMessage(order),
       language: "FR",
       metadata: [{ orderId: order.id }, { userId: order.user_id, isPII: true }, { email: userEmail, isPII: true }],

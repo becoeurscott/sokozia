@@ -2,10 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { badRequest, notFound, readJson, requireUser, route } from "@/lib/api";
 import { getDb, now } from "@/lib/db";
 import type { BriefContent, Generation, Message, Thread } from "@/lib/types";
-import { isDuration } from "@/lib/models";
+import { formatFcfa, isDuration, videoPrice } from "@/lib/models";
 import { getActor } from "@/lib/actors";
-import { createGeneration, publicGeneration } from "@/lib/services/generations";
+import { createGeneration, publicGeneration, submitGeneration } from "@/lib/services/generations";
 import { createOrder } from "@/lib/services/orders";
+import { getBalance, payVideoFromWallet } from "@/lib/services/wallet";
 
 export const dynamic = "force-dynamic";
 // Claude briefs, Higgsfield submits and the 30 s join can take longer than the default limit.
@@ -27,12 +28,12 @@ interface Body {
   script?: string;
   /** ISO3 country of the Mobile Money account. */
   country?: string;
-  method?: "mobile" | "card";
+  method?: "mobile" | "card" | "wallet";
 }
 
 /**
  * "Créer la vidéo": creates the generation from a brief message and opens
- * a Mobile Money checkout for it (pay-per-video).
+ * a Mobile Money or card checkout for it, or pays it from the wallet.
  */
 export const POST = route(async (req: NextRequest) => {
   const user = await requireUser();
@@ -49,6 +50,13 @@ export const POST = route(async (req: NextRequest) => {
   const thread = await db.get<Thread>("threads", msg.thread_id);
   if (!thread) notFound("Conversation introuvable.");
   const brief = msg.content as unknown as BriefContent;
+
+  const fromWallet = body.method === "wallet";
+  if (fromWallet) {
+    const balance = await getBalance(user.id);
+    const price = videoPrice(body.duration);
+    if (balance < price) badRequest(`Solde insuffisant : ${formatFcfa(balance)} pour une vidéo à ${formatFcfa(price)}. Recharge ton portefeuille ou paie par Mobile Money.`);
+  }
 
   const generation = await createGeneration({
     userId: user.id,
@@ -70,10 +78,17 @@ export const POST = route(async (req: NextRequest) => {
     user_id: user.id,
     role: "assistant",
     kind: "video",
-    content: { generationId: generation.id, text: "Ta vidéo part dès que le paiement Mobile Money est confirmé." },
+    content: { generationId: generation.id, text: fromWallet ? "Payée avec ton solde. Ta vidéo est en cours de création." : "Ta vidéo part dès que le paiement est confirmé." },
     created_at: now(),
   });
   await db.update<Thread>("threads", thread.id, { updated_at: now() });
+
+  if (fromWallet) {
+    // The balance was checked above; this debit is the one that counts (never below zero, once per video).
+    const paid = await payVideoFromWallet(generation);
+    const started = paid.ok ? await submitGeneration(generation) : generation;
+    return NextResponse.json({ generation: publicGeneration(started), message: videoMsg, redirectUrl: null, balance: paid.balance });
+  }
 
   const { redirectUrl } = await createOrder({ user, generation, country: body.country, method: body.method === "card" ? "card" : "mobile" });
   return NextResponse.json({ generation: publicGeneration(generation), message: videoMsg, redirectUrl });

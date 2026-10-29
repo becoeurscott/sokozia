@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, Pencil, Clock, CreditCard, Smartphone } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, Pencil, Clock, CreditCard, Smartphone, Wallet } from "lucide-react";
+import { useWallet } from "@/lib/client/useWallet";
 import { ACTORS, getActor } from "@/lib/actors";
 import { DURATIONS, MODEL, cardPriceCents, closestDuration, formatEur, formatFcfa, isDuration, videoPrice, type Duration } from "@/lib/models";
 import { COUNTRY_CURRENCY, DEFAULT_COUNTRY, PAY_COUNTRIES, isPayCountry, localAmount } from "@/lib/pricing";
@@ -45,13 +47,17 @@ export function BriefCard({
     setCountry(savedCountry());
     setMethod(savedMethod());
   }, []);
+  const { balance } = useWallet(!locked);
+  const short = method === "wallet" && balance !== null && balance < price;
   const local = localAmount(country, price);
   const fcfa = local.currency === "XAF" || local.currency === "XOF";
   // What the customer is charged with the chosen method (cards pay in euros).
   const payLabel =
     method === "card"
       ? `${formatEur(cardPriceCents(duration))} (≈ ${formatFcfa(price)})`
-      : fcfa
+      : method === "wallet"
+        ? `${formatFcfa(price)} pris sur ton solde`
+        : fcfa
         ? formatFcfa(price)
         : `${local.amount.toLocaleString("fr-FR")} ${local.currency} (≈ ${formatFcfa(price)})`;
 
@@ -185,6 +191,7 @@ export function BriefCard({
                   [
                     ["mobile", "Mobile Money", Smartphone],
                     ["card", "Carte bancaire", CreditCard],
+                    ["wallet", "Mon solde", Wallet],
                   ] as const
                 ).map(([m, label, Icon]) => (
                   <button
@@ -199,7 +206,15 @@ export function BriefCard({
                   </button>
                 ))}
               </div>
-              {method === "card" ? (
+              {method === "wallet" ? (
+                <span className="block text-xs">
+                  Solde : <span className="font-semibold text-ink">{balance === null ? "…" : formatFcfa(balance)}</span>
+                  {short && <span className="text-red-600"> · insuffisant</span>} ·{" "}
+                  <Link href="/compte#portefeuille" className="font-semibold text-brand hover:underline">
+                    Recharger
+                  </Link>
+                </span>
+              ) : method === "card" ? (
                 <span className="block text-xs">Visa, Mastercard · payé en euros, sécurisé par Stripe</span>
               ) : (
               <label className="flex items-center gap-2">
@@ -223,7 +238,7 @@ export function BriefCard({
               </span>
             </div>
             <button
-              disabled={busy || script.trim().length < 10}
+              disabled={busy || script.trim().length < 10 || short}
               onClick={() => onLaunch({ method, country, duration, actorId, script: script.trim() })}
               className="flex h-11 items-center justify-center gap-2 rounded-pill bg-brand px-5 text-sm font-semibold text-white transition hover:bg-[#d24f0a] disabled:opacity-50"
             >
@@ -244,7 +259,7 @@ function Label({ children }: { children: React.ReactNode }) {
 const COUNTRY_KEY = "sokozia:pay-country";
 const METHOD_KEY = "sokozia:pay-method";
 
-export type PayMethod = "mobile" | "card";
+export type PayMethod = "mobile" | "card" | "wallet";
 
 function remember(key: string, value: string) {
   try {
@@ -254,10 +269,11 @@ function remember(key: string, value: string) {
   }
 }
 
-/** Mobile Money or card, as last picked (Mobile Money by default). */
+/** Mobile Money, card or balance, as last picked (Mobile Money by default). */
 export function savedMethod(): PayMethod {
   try {
-    return localStorage.getItem(METHOD_KEY) === "card" ? "card" : "mobile";
+    const m = localStorage.getItem(METHOD_KEY);
+    return m === "card" || m === "wallet" ? m : "mobile";
   } catch {
     return "mobile";
   }

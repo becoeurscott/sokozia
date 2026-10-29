@@ -121,6 +121,10 @@ export interface Order {
   currency: string;
   country: string | null;
   provider: "mock" | "pawapay" | "stripe";
+  /** "video" pays one generation; "topup" adds to the wallet. */
+  purpose?: "video" | "topup";
+  /** For top-ups: how many 15 s video prices were bought. */
+  units?: number | null;
   checkout_code: string | null;
   redirect_url: string | null;
   status: OrderStatus;

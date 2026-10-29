@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
+import { refreshWallet } from "@/lib/client/useWallet";
 import type { BriefContent, Generation, Message, Thread } from "@/lib/types";
 import { useStudio, type Draft, EMPTY_DRAFT } from "./StudioProvider";
 import { Composer } from "./Composer";
@@ -97,7 +98,7 @@ export function ThreadView({ threadId }: { threadId: string }) {
   async function launch(message: Message, input: LaunchInput) {
     setLaunching(message.id);
     try {
-      const res = await api<{ generation: Pub; message: Message; redirectUrl: string }>("/api/generations", {
+      const res = await api<{ generation: Pub; message: Message; redirectUrl: string | null }>("/api/generations", {
         method: "POST",
         json: { messageId: message.id, ...input },
       });
@@ -110,6 +111,11 @@ export function ThreadView({ threadId }: { threadId: string }) {
             }
           : cur,
       );
+      // Paid from the balance: the video already started, no checkout page.
+      if (!res.redirectUrl) {
+        refreshWallet();
+        return;
+      }
       window.location.href = res.redirectUrl;
       return;
     } catch (e) {
@@ -133,8 +139,15 @@ export function ThreadView({ threadId }: { threadId: string }) {
 
   async function pay(g: Pub) {
     try {
-      const { redirectUrl } = await api<{ redirectUrl: string }>("/api/orders/single", { method: "POST", json: { generationId: g.id, country: savedCountry(), method: savedMethod() } });
-      window.location.href = redirectUrl;
+      const res = await api<{ redirectUrl: string | null; generation?: Pub }>("/api/orders/single", { method: "POST", json: { generationId: g.id, country: savedCountry(), method: savedMethod() } });
+      if (!res.redirectUrl) {
+        // Paid from the balance.
+        const started = res.generation;
+        if (started) setData((cur) => (cur ? { ...cur, generations: cur.generations.map((x) => (x.id === started.id ? started : x)) } : cur));
+        refreshWallet();
+        return;
+      }
+      window.location.href = res.redirectUrl;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
     }
