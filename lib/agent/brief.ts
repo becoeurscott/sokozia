@@ -48,6 +48,10 @@ const FORMATS = {
   avant_apres: "Avant / après",
   essayage: "Essayage",
   offre: "Offre spéciale",
+  pov: "POV",
+  trois_raisons: "3 raisons",
+  arrete: "Arrête de…",
+  reponse_commentaire: "Réponse à un commentaire",
 } as const;
 type FormatKey = keyof typeof FORMATS;
 
@@ -216,7 +220,14 @@ Choisis aussi le créateur le plus crédible pour ce produit et cet acheteur (ge
 - Pas de didascalies, d'emojis, de hashtags ni de guillemets dans le texte parlé.
 
 ÉTAPE 4 — LES PLANS (en anglais, pour Seedance)
-Pour chaque clip, un plan de 40 à 80 mots : ce que fait le créateur avec le produit, geste par geste (tenir l'étiquette face caméra, ouvrir, verser, appliquer, allumer, porter, croquer…), le cadrage (gros plan sur les mains et le produit, plan poitrine face caméra…) et un mouvement de caméra simple. Le produit est visible dans les 2 premières secondes et ressemble exactement à ta description visuelle. Même personne, même tenue, même décor d'un clip à l'autre. Pas de texte à l'écran, pas d'autres personnes sauf si c'est indispensable, pas d'actions impossibles à filmer.
+Le style est celui des pubs qui marchent sur TikTok et Reels : une vraie personne qui se filme en selfie avec son téléphone, face caméra, qui PARLE tout le temps, avec des plans courts qui changent toutes les 2 à 4 secondes. Pour chaque clip de 15 s, écris une timeline de 3 à 5 temps avec leur minutage, en anglais, par exemple :
+"0-3s: tight selfie close-up, she says the hook straight into the lens, surprised face. 3-7s: she brings the jar next to her face, label to camera, still talking. 7-11s: quick close-up of her fingers scooping the butter, her voice continues. 11-15s: back to her face, she points at the camera for the call to action."
+Règles :
+- Le visage du créateur, en gros plan ou plan poitrine, est à l'écran au moins 70 % du temps, la bouche bien visible : c'est ce qui rend la synchronisation labiale crédible. Les gros plans produit sont courts (2 à 4 s) et sa voix continue dessus.
+- Ne décris jamais un sourire bouche fermée pendant qu'il parle. Écris qu'il parle, réagit, hoche la tête, fait des gestes.
+- Le produit est visible dans les 3 premières secondes et ressemble exactement à ta description visuelle. Gestes concrets avec le produit (tenir l'étiquette face caméra, ouvrir, verser, appliquer, allumer, porter, croquer…).
+- Caméra tenue à la main, petits zooms rapides (punch-in), lumière naturelle. Même personne, même tenue, même décor d'un clip à l'autre. Pas de texte à l'écran, pas d'autres personnes, pas de miroir avec un reflet, pas d'actions impossibles à filmer.
+- Formats tendance que tu peux choisir quand ils servent le produit : pov (« POV : tu as enfin trouvé… »), trois_raisons (« 3 raisons d'acheter… »), arrete (« Arrête d'acheter des… »), reponse_commentaire (le créateur répond à une question de client lue sur son téléphone).
 
 ÉTAPE 5 — TON MESSAGE AU CLIENT
 En une ou deux phrases, en tutoyant : dis ce que tu as compris du produit et l'angle choisi. S'il manque une info qui rendrait la pub plus efficace (prix, numéro WhatsApp, lieu de livraison, promo), propose-lui de l'ajouter, une seule fois.
@@ -493,21 +504,86 @@ export function buildVideoPrompts(
   const visual = brief.insight?.visual;
   const product = visual ? `${brief.product} (${visual})` : brief.product;
   const hasPhoto = Boolean(brief.imageUrl);
+  const pronoun = actor.gender === "f" ? "She" : "He";
+  const person = actor.gender === "f" ? "woman" : "man";
+  // What the model is most likely to drop is the talking, so speech comes first.
   return lines.map((line, i) =>
     [
-      `Vertical 9:16 UGC advert, ${MAX_CLIP_SECONDS} seconds, filmed on a phone, natural handheld feel.`,
-      n > 1 ? `Part ${i + 1} of ${n} of the same ad: ${i === 0 ? "it opens with a strong hook." : "it continues the previous part seamlessly, same person, outfit, setting and light, and ends on the call to action."}` : null,
+      `Talking-head TikTok ad, vertical 9:16 selfie video, ${MAX_CLIP_SECONDS} seconds, filmed by the ${person} on a phone front camera at arm's length, handheld, quick punch-in zooms, natural light.`,
+      n > 1 ? `Part ${i + 1} of ${n} of the same ad: ${i === 0 ? "it opens on the hook." : "it continues the previous part seamlessly (same person, outfit, setting, light and voice) and ends on the call to action."}` : null,
       `The first reference image is the presenter's character sheet: ${actor.look}. Keep this exact face, hair, outfit and identity throughout.`,
+      `${pronoun} TALKS directly into the lens for the whole clip: lips, jaw and face move clearly and in sync with every word, expressive eyebrows, natural head movement and hand gestures. Never a closed-mouth smile while the voice plays, no voice-over.`,
+      `${pronoun} speaks French with a natural ${accentOf(actor.country)} accent, a ${actor.age}-year-old ${person}'s voice, ${VOICE_EN[actor.voice] ?? "warm and natural"}, like a voice note to friends. ${pronoun} says: "${line}"`,
+      brief.shots?.[i] ? `Timeline: ${brief.shots[i]}` : `Timeline: mostly a tight selfie close-up of ${pronoun === "She" ? "her" : "his"} talking face, with one short close-up of the product in hand while the voice continues.`,
       hasPhoto
-        ? `The second reference image is the product: ${product}. Reproduce it exactly (shape, colours, packaging, label) and show it clearly in hand.`
-        : `The product is ${product}; show it clearly in hand.`,
+        ? `The second reference image is the product: ${product}. Reproduce it exactly (shape, colours, packaging, label).`
+        : `The product is ${product}.`,
       brief.insight?.demo ? `How the product is shown: ${brief.insight.demo}` : null,
-      `Setting: ${brief.scene}. Natural light that fits the setting, authentic African small-business atmosphere.`,
-      brief.shots?.[i] ? `Shot: ${brief.shots[i]}` : null,
-      `The presenter looks at the camera and speaks in French with a ${actor.voice} voice, lip-synced to this script: "${line}"`,
-      `No captions, no logos, no text overlays.`,
+      `Setting: ${brief.scene}. Light that fits the setting, authentic African everyday atmosphere.`,
+      `Only this one person in frame, no reflections of other people, no music, no captions, no logos, no text overlays.`,
     ]
       .filter(Boolean)
       .join(" "),
   );
 }
+
+/** The accent Seedance gives the presenter's voice, from their country. */
+function accentOf(country: string): string {
+  const accents: Record<string, string> = {
+    "Côte d'Ivoire": "Ivorian (West African)",
+    Sénégal: "Senegalese (West African)",
+    Mali: "Malian (West African)",
+    "Burkina Faso": "Burkinabè (West African)",
+    Guinée: "Guinean (West African)",
+    Niger: "Nigerien (West African)",
+    Bénin: "Beninese (West African)",
+    Togo: "Togolese (West African)",
+    Ghana: "Ghanaian (West African)",
+    Nigeria: "Nigerian (West African)",
+    Cameroun: "Cameroonian (Central African)",
+    Gabon: "Gabonese (Central African)",
+    "RD Congo": "Congolese, from Kinshasa (Central African)",
+    Kenya: "East African",
+  };
+  return accents[country] ?? "West African";
+}
+
+/** The creators' voice descriptions (French, in lib/actors.ts) in English for Seedance. */
+const VOICE_EN: Record<string, string> = {
+  "douce et enjouée": "soft and cheerful",
+  "claire et rapide": "clear and quick",
+  "posée et élégante": "calm and elegant",
+  "chaleureuse et drôle": "warm and funny",
+  pétillante: "bubbly",
+  "très expressive": "very expressive",
+  rassurante: "reassuring",
+  "directe et amicale": "direct and friendly",
+  "calme et apaisante": "calm and soothing",
+  dynamique: "energetic",
+  spontanée: "spontaneous",
+  "posée et sincère": "calm and sincere",
+  inspirante: "inspiring",
+  accueillante: "welcoming",
+  "assurée et pro": "confident and professional",
+  raffinée: "refined",
+  "douce et raffinée": "soft and refined",
+  "énergique et motivante": "energetic and motivating",
+  "pétillante et chic": "bubbly and chic",
+  "douce et girly": "soft and girly",
+  "tendre et rassurante": "tender and reassuring",
+  "très expressive et joyeuse": "very expressive and joyful",
+  "veloutée et posée": "velvety and calm",
+  "calme et inspirante": "calm and inspiring",
+  "curieuse et entraînante": "curious and catchy",
+  "cool et directe": "cool and direct",
+  "grave et assurée": "deep and confident",
+  "posée et charmeuse": "calm and charming",
+  élégante: "elegant",
+  "chaleureuse et terrienne": "warm and down-to-earth",
+  "rassurante et claire": "reassuring and clear",
+  survoltée: "hyped and excited",
+  "calme et experte": "calm and expert",
+  "posée et crédible": "calm and credible",
+  joviale: "jovial",
+  "claire et pédagogue": "clear and didactic",
+};
