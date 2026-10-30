@@ -10,7 +10,20 @@ export default function LandingPage() {
   return (
     <main>
       {/* Hero */}
-      <section className="welcome-glow">
+      <section className="relative isolate overflow-hidden">
+        {/* Background clip (Seedance 2.0), muted and looping, under a cream veil so the text stays readable. */}
+        <video
+          className="absolute inset-0 -z-20 h-full w-full object-cover motion-reduce:hidden"
+          src="/hero/hero.mp4"
+          poster="/hero/hero.jpg"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-bg/85 via-bg/75 to-bg" />
         <div className="mx-auto max-w-6xl px-4 pb-16 pt-14 text-center md:pt-20">
           <div className="mx-auto mb-5 flex w-fit items-center gap-2 rounded-pill border border-line bg-card px-3 py-1 text-xs font-semibold text-muted">
             <span className="h-2 w-2 rounded-full bg-accent" /> Orange Money · MTN MoMo · Moov · Wave · Airtel · M-Pesa
