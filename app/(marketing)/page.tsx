@@ -9,9 +9,8 @@ import { CreatorCard } from "@/components/studio/ActorsPicker";
 export default function LandingPage() {
   return (
     <main>
-      {/* Hero */}
-      <section className="relative isolate overflow-hidden">
-        {/* Background clip (Seedance 2.0), muted and looping, under a cream veil so the text stays readable. */}
+      {/* Hero: the Seedance clip fills the screen, little text, one card to start. */}
+      <section className="relative isolate flex min-h-[calc(100svh-4rem)] items-end overflow-hidden text-white md:items-center">
         <video
           className="absolute inset-0 -z-20 h-full w-full object-cover motion-reduce:hidden"
           src="/hero/hero.mp4"
@@ -23,32 +22,33 @@ export default function LandingPage() {
           preload="auto"
           aria-hidden="true"
         />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-bg/85 via-bg/75 to-bg" />
-        <div className="mx-auto max-w-6xl px-4 pb-16 pt-14 text-center md:pt-20">
-          <div className="mx-auto mb-5 flex w-fit items-center gap-2 rounded-pill border border-line bg-card px-3 py-1 text-xs font-semibold text-muted">
-            <span className="h-2 w-2 rounded-full bg-accent" /> Orange Money · MTN MoMo · Moov · Wave · Airtel · M-Pesa
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-[#1d1a16]/70 via-[#1d1a16]/45 to-[#1d1a16]/85 md:bg-gradient-to-r md:from-[#1d1a16]/80 md:via-[#1d1a16]/50 md:to-transparent" />
+        <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 pb-10 pt-16 md:grid-cols-[1fr_380px] md:items-center md:py-24">
+          <div>
+            <h1 className="text-[2.6rem] font-extrabold leading-[1.05] tracking-tight md:text-6xl">
+              Ta pub vidéo avec des <span className="text-brand">visages africains</span>
+            </h1>
+            <p className="mt-4 max-w-md text-lg text-white/85">Décris ton produit. L&apos;IA écrit et tourne ta pub TikTok en quelques minutes.</p>
           </div>
-          <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
-            Tes vidéos pub avec des <span className="text-brand underline decoration-brand/30 decoration-4 underline-offset-4">visages africains</span>, prêtes en quelques minutes.
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg text-muted">
-            Pas d&apos;acteur, pas de caméra, pas de montage. Tu décris ton produit comme sur WhatsApp, notre directrice de création IA écrit le script et on crée la vidéo pour TikTok, WhatsApp et Facebook.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button href="/studio" size="lg">
+          <div className="rounded-3xl bg-bg p-6 text-center text-ink shadow-[0_30px_80px_-30px_rgba(0,0,0,.6)]">
+            <div className="text-xl font-extrabold text-brand">Crée ta première pub</div>
+            <div className="mt-1 text-sm text-muted">
+              Dès <b className="text-ink">{formatFcfa(lowestPrice())}</b> · sans abonnement
+            </div>
+            <Button href="/studio" size="lg" className="mt-5 w-full">
               Créer ma vidéo <ArrowRight className="h-4 w-4" />
             </Button>
-            <Button href="/tarifs" size="lg" variant="outline">
+            <Button href="/tarifs" size="lg" variant="outline" className="mt-3 w-full">
               Voir les prix
             </Button>
+            <div className="mt-4 text-xs text-muted">Orange Money · MTN MoMo · Wave · Carte</div>
           </div>
-          <p className="mt-4 text-sm text-muted">
-            À partir de <b className="text-ink">{formatFcfa(lowestPrice())}</b> la vidéo · Tu payes chaque vidéo, sans abonnement
-          </p>
         </div>
+      </section>
 
-        {/* Studio preview */}
-        <div className="mx-auto max-w-4xl px-4 pb-16">
+      {/* Studio preview */}
+      <section className="welcome-glow">
+        <div className="mx-auto max-w-4xl px-4 py-16">
           <div className="overflow-hidden rounded-3xl border border-line bg-card shadow-[0_30px_80px_-40px_rgba(29,26,22,.4)]">
             <div className="flex">
               <div className="hidden w-48 shrink-0 border-r border-line bg-side p-4 text-sm sm:block">
