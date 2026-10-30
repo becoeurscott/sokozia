@@ -26,7 +26,7 @@ export default function LandingPage() {
         <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 pb-10 pt-16 md:grid-cols-[1fr_380px] md:items-center md:py-24">
           <div>
             <h1 className="text-[2.6rem] font-extrabold leading-[1.05] tracking-tight md:text-6xl">
-              Ta pub vidéo avec des <span className="text-brand">visages africains</span>
+              Ta pub vidéo avec des <span className="text-brand-bright">visages africains</span>
             </h1>
             <p className="mt-4 max-w-md text-lg text-white/85">Décris ton produit. L&apos;IA écrit et tourne ta pub TikTok en quelques minutes.</p>
           </div>

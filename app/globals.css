@@ -6,8 +6,11 @@
   --line: #ecdfd0;
   --ink: #1d1a16;
   --muted: #6b6259;
-  --brand: #e8590c;
-  --brand-soft: #fdebdc;
+  --brand: #6d071a;
+  --brand-hover: #55050f;
+  /* Lighter shade for brand text on the dark hero video. */
+  --brand-bright: #f08a9c;
+  --brand-soft: #f7e4e7;
   --brand-ink: #ffffff;
   --accent: #0f7b53;
   --accent-soft: #e3f3ec;
@@ -23,6 +26,8 @@
   --color-muted: var(--muted);
   --color-brand: var(--brand);
   --color-brand-soft: var(--brand-soft);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-bright: var(--brand-bright);
   --color-brand-ink: var(--brand-ink);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
@@ -91,7 +96,7 @@ body {
 }
 
 .welcome-glow {
-  background: radial-gradient(60% 50% at 50% 0%, #ffe9d6 0%, rgba(255, 250, 243, 0) 70%);
+  background: radial-gradient(60% 50% at 50% 0%, #f6dfe3 0%, rgba(255, 250, 243, 0) 70%);
 }
 
 /* Top bar while a page loads (components/ui/NavProgress.tsx). */

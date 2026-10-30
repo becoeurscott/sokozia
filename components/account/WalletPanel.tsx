@@ -111,7 +111,7 @@ export function WalletPanel() {
             <button
               onClick={topup}
               disabled={busy}
-              className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-pill bg-brand px-5 text-sm font-semibold text-white transition hover:bg-[#d24f0a] disabled:opacity-50"
+              className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-pill bg-brand px-5 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:opacity-50"
             >
               {busy && <Spinner />} Payer {charged} · +{formatFcfa(fcfa)} sur mon solde
             </button>

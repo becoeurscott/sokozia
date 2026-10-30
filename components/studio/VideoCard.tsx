@@ -90,7 +90,7 @@ export function VideoCard({
             <>
               <p className="text-sm text-muted">Ta vidéo partira dès que le paiement Mobile Money est confirmé.</p>
               {onPay && (
-                <button onClick={onPay} className="mt-3 flex h-10 w-fit items-center gap-2 rounded-pill bg-brand px-4 text-sm font-semibold text-white hover:bg-[#d24f0a]">
+                <button onClick={onPay} className="mt-3 flex h-10 w-fit items-center gap-2 rounded-pill bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-hover">
                   <CreditCard className="h-4 w-4" /> Payer {formatFcfa(g.price)}
                 </button>
               )}
@@ -153,7 +153,7 @@ export function VideoCard({
               {onRetry ? (
                 <>
                   <p className="mt-1 text-xs text-muted">Tu as déjà payé cette vidéo : on la relance sans frais.</p>
-                  <button onClick={onRetry} disabled={retrying} className="mt-3 flex h-10 w-fit items-center gap-2 rounded-pill bg-brand px-4 text-sm font-semibold text-white hover:bg-[#d24f0a] disabled:opacity-60">
+                  <button onClick={onRetry} disabled={retrying} className="mt-3 flex h-10 w-fit items-center gap-2 rounded-pill bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60">
                     {retrying ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Relancer gratuitement
                   </button>
                 </>

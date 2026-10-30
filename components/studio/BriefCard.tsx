@@ -240,7 +240,7 @@ export function BriefCard({
             <button
               disabled={busy || script.trim().length < 10 || short}
               onClick={() => onLaunch({ method, country, duration, actorId, script: script.trim() })}
-              className="flex h-11 items-center justify-center gap-2 rounded-pill bg-brand px-5 text-sm font-semibold text-white transition hover:bg-[#d24f0a] disabled:opacity-50"
+              className="flex h-11 items-center justify-center gap-2 rounded-pill bg-brand px-5 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:opacity-50"
             >
               {busy && <Spinner />}
               {`Créer la vidéo · ${method === "card" ? formatEur(cardPriceCents(duration)) : formatFcfa(price)}`}

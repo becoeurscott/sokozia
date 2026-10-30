@@ -69,7 +69,7 @@ export function Composer({
   return (
     <div className="w-full">
       <div
-        className={`rounded-[22px] border border-line bg-card shadow-[0_10px_40px_-18px_rgba(29,26,22,.25)] transition focus-within:border-brand/50 focus-within:shadow-[0_10px_40px_-14px_rgba(232,89,12,.35)] ${compact ? "px-3 pb-2 pt-2" : "px-4 pb-3 pt-4"}`}
+        className={`rounded-[22px] border border-line bg-card shadow-[0_10px_40px_-18px_rgba(29,26,22,.25)] transition focus-within:border-brand/50 focus-within:shadow-[0_10px_40px_-14px_rgba(109,7,26,.35)] ${compact ? "px-3 pb-2 pt-2" : "px-4 pb-3 pt-4"}`}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -134,7 +134,7 @@ export function Composer({
             type="button"
             onClick={submit}
             disabled={!canSend}
-            className={`flex h-10 items-center gap-2 rounded-pill pl-4 pr-3 text-sm font-semibold text-white transition ${canSend ? "bg-brand hover:bg-[#d24f0a]" : "bg-brand/40"}`}
+            className={`flex h-10 items-center gap-2 rounded-pill pl-4 pr-3 text-sm font-semibold text-white transition ${canSend ? "bg-brand hover:bg-brand-hover" : "bg-brand/40"}`}
           >
             {busy ? <Spinner /> : null}
             {label}

@@ -6,11 +6,11 @@ type Size = "sm" | "md" | "lg";
 
 const base = "inline-flex items-center justify-center gap-2 rounded-pill font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap";
 const variants: Record<Variant, string> = {
-  brand: "bg-brand text-brand-ink hover:bg-[#d24f0a] shadow-[0_6px_18px_-8px_rgba(232,89,12,.7)]",
+  brand: "bg-brand text-brand-ink hover:bg-brand-hover shadow-[0_6px_18px_-8px_rgba(109,7,26,.7)]",
   dark: "bg-ink text-white hover:bg-black",
   ghost: "text-ink hover:bg-hover",
   outline: "border border-line bg-card text-ink hover:bg-hover",
-  soft: "bg-brand-soft text-brand hover:bg-[#fbdcc4]",
+  soft: "bg-brand-soft text-brand hover:bg-[#efd0d6]",
 };
 const sizes: Record<Size, string> = {
   sm: "h-8 px-3 text-sm",

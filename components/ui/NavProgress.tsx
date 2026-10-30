@@ -42,7 +42,7 @@ export function NavProgress() {
   if (state === "idle") return null;
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-[3px]" aria-hidden>
-      <div className={`nav-progress h-full bg-brand shadow-[0_0_10px_rgba(232,89,12,.7)] ${state === "done" ? "nav-progress-done" : ""}`} />
+      <div className={`nav-progress h-full bg-brand shadow-[0_0_10px_rgba(109,7,26,.6)] ${state === "done" ? "nav-progress-done" : ""}`} />
     </div>
   );
 }
