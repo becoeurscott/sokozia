@@ -237,6 +237,19 @@ export function ThreadView({ threadId }: { threadId: string }) {
               </div>
             );
           })}
+          {sending && (
+            <div className="fade-up flex items-start gap-3" role="status">
+              <Awa />
+              <div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-line bg-card px-4 py-3 text-sm text-muted">
+                <span className="flex gap-1" aria-hidden>
+                  {[0, 1, 2].map((i) => (
+                    <span key={i} className="typing-dot h-1.5 w-1.5 rounded-full bg-brand" style={{ animationDelay: `${i * 0.15}s` }} />
+                  ))}
+                </span>
+                Awa réfléchit…
+              </div>
+            </div>
+          )}
           <div ref={bottomRef} />
         </div>
       </div>
