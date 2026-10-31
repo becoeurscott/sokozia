@@ -1,6 +1,8 @@
 import "server-only";
 import { getDb, now } from "../db";
-import { actorSheetUrl, actorVoiceUrl, getActor } from "../actors";
+import { actorSheetUrl, actorVoiceUrl, getActor, type Actor } from "../actors";
+import { elevenVoiceId, speakLine } from "../providers/elevenlabs";
+import { uploadToHiggsfield } from "../providers/higgsfield";
 import { MAX_CLIP_SECONDS, clipCount, videoPrice, type Duration, type Style } from "../models";
 import type { BriefContent, Generation, GenerationPart, Message, Order } from "../types";
 import { videoProvider } from "../providers";
@@ -95,6 +97,35 @@ export async function retryFailedGeneration(failed: Generation): Promise<Generat
 }
 
 /**
+ * Has ElevenLabs speak each clip's line (read back from the prompt, where
+ * buildVideoPrompts wrote it) and uploads the audio for Seedance. Returns
+ * null when the creator has no ElevenLabs voice or anything fails: the
+ * video then goes out with Seedance's own voice rather than not at all.
+ */
+async function spokenLines(actor: Actor, prompts: string[]): Promise<string[] | null> {
+  const voiceId = elevenVoiceId(actor);
+  if (!voiceId) return null;
+  const lines = prompts.map(lineOfPrompt);
+  if (lines.some((l) => !l)) return null;
+  try {
+    return await Promise.all(
+      lines.map(async (line, i) => {
+        const { audio } = await speakLine(voiceId, line!, { previous: lines[i - 1] ?? undefined, next: lines[i + 1] ?? undefined });
+        return uploadToHiggsfield(audio.buffer.slice(audio.byteOffset, audio.byteOffset + audio.byteLength) as ArrayBuffer, "audio/mpeg");
+      }),
+    );
+  } catch (e) {
+    console.error("[voice] ElevenLabs line failed, using Seedance's voice:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/** The spoken line of a clip prompt: `says: "…"`. */
+export function lineOfPrompt(prompt: string): string | null {
+  return prompt.match(/says: "([^"]+)"/)?.[1]?.trim() || null;
+}
+
+/**
  * Sends every clip to the video provider at once (one for 15 s, two for
  * 30 s), so a 30 s ad takes about as long as a 15 s one. Safe to call once
  * per generation.
@@ -111,6 +142,8 @@ export async function submitGeneration(generation: Generation): Promise<Generati
   // Prompts were written at creation (with Claude's shots); rebuild only for old rows.
   const stored = generation.prompt.split(PROMPT_SEPARATOR);
   const prompts = stored.length === count ? stored : buildVideoPrompts({ ...generation, scene: "dans un décor simple et lumineux", imageUrl: generation.product_image_url }, actor);
+  // Each clip's line spoken by ElevenLabs in the creator's voice; null keeps Seedance's own voice.
+  const spoken = provider.name === "higgsfield" ? await spokenLines(actor, prompts.slice(0, count)) : null;
   try {
     const submitted = await Promise.all(
       prompts.slice(0, count).map((prompt, part) =>
@@ -121,7 +154,7 @@ export async function submitGeneration(generation: Generation): Promise<Generati
           prompt,
           duration: Math.min(MAX_CLIP_SECONDS, generation.duration - part * MAX_CLIP_SECONDS),
           actorImageUrl,
-          voiceUrl,
+          voiceUrl: spoken?.[part] ?? voiceUrl,
           productImageUrl: generation.product_image_url,
           webhookUrl,
         }),

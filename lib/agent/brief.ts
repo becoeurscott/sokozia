@@ -5,6 +5,7 @@ import { MAX_CLIP_SECONDS, clipCount, closestDuration, isDuration, type Duration
 import type { BriefContent, ProductInsight } from "../types";
 import { isInsForgeConfigured } from "../db";
 import { readLocalFile } from "../storage";
+import { elevenVoiceId } from "../providers/elevenlabs";
 import { firstLink, readProductPage, type ProductPage } from "./productPage";
 
 /**
@@ -512,10 +513,12 @@ export function buildVideoPrompts(
       `Talking-head TikTok ad, vertical 9:16 selfie video, ${MAX_CLIP_SECONDS} seconds, filmed by the ${person} on a phone front camera at arm's length, handheld, quick punch-in zooms, natural light.`,
       n > 1 ? `Part ${i + 1} of ${n} of the same ad: ${i === 0 ? "it opens on the hook." : "it continues the previous part seamlessly (same person, outfit, setting, light and voice) and ends on the call to action."}` : null,
       `The first reference image is the presenter's character sheet: ${actor.look}. Keep this exact face, hair, outfit and identity throughout.`,
-      `${pronoun} TALKS directly into the lens for the whole clip: lips, jaw and face move clearly and in sync with every word, expressive eyebrows, natural head movement and hand gestures. Never a closed-mouth smile while the voice plays, no voice-over.`,
-      hasVoice(actor)
-        ? `${pronoun === "She" ? "Her" : "His"} voice is exactly the voice of the audio reference: same timbre and the same natural ${accentOf(actor.country)} French accent, ${VOICE_EN[actor.voice] ?? "warm and natural"}, like a voice note to friends. ${pronoun} says: "${line}"`
-        : `${pronoun} speaks French with a natural ${accentOf(actor.country)} accent, a ${actor.age}-year-old ${person}'s voice, ${VOICE_EN[actor.voice] ?? "warm and natural"}, like a voice note to friends. ${pronoun} says: "${line}"`,
+      `${pronoun} TALKS directly into the lens for the whole clip: lips, jaw and face move clearly and in sync with every word, lips closing fully on m, b and p and teeth touching the lip on f and v, expressive eyebrows, natural head movement and hand gestures. No fixed grin and no closed-mouth smile while speaking, smiles only between sentences, no voice-over.`,
+      elevenVoiceId(actor)
+        ? `The audio reference is ${pronoun === "She" ? "her" : "his"} own recorded speech for this clip: ${pronoun.toLowerCase()} lip-syncs exactly to it, word for word, mouth shapes matching every syllable from the first frame to the last. Keep that audio as the soundtrack. ${pronoun} says: "${line}"`
+        : hasVoice(actor)
+          ? `${pronoun === "She" ? "Her" : "His"} voice is exactly the voice of the audio reference: same timbre and the same natural ${accentOf(actor.country)} French accent, ${VOICE_EN[actor.voice] ?? "warm and natural"}, like a voice note to friends. ${pronoun} says: "${line}"`
+          : `${pronoun} speaks French with a natural ${accentOf(actor.country)} accent, a ${actor.age}-year-old ${person}'s voice, ${VOICE_EN[actor.voice] ?? "warm and natural"}, like a voice note to friends. ${pronoun} says: "${line}"`,
       brief.shots?.[i] ? `Timeline: ${brief.shots[i]}` : `Timeline: mostly a tight selfie close-up of ${pronoun === "She" ? "her" : "his"} talking face, with one short close-up of the product in hand while the voice continues.`,
       hasPhoto
         ? `The second reference image is the product: ${product}. Reproduce it exactly (shape, colours, packaging, label).`

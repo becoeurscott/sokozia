@@ -5,3 +5,4 @@ public/uploads/
 .agents/
 *.mp4.tmp
 tests-video/
+voices-preview/

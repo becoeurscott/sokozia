@@ -114,6 +114,26 @@ Accès à Claude, dans cet ordre : `ANTHROPIC_API_KEY` (API directe,
 `anthropic/claude-opus-5.5`, `OPENROUTER_DIRECTOR_MODEL` pour changer),
 sinon l'ancien proxy IA d'InsForge (texte seul), sinon un script modèle.
 
+## Voix des créateurs (ElevenLabs)
+
+Seedance parle mal le français (mots changés, accent de France). Avec
+ElevenLabs, chaque clip est d'abord dit par la voix du créateur, puis
+Seedance fait bouger les lèvres sur cet audio et le garde comme bande-son
+(`lib/providers/elevenlabs.ts`, `spokenLines` dans
+`lib/services/generations.ts`). Le français est alors exactement le script.
+
+1. Crée un compte ElevenLabs (offre payante pour Voice Design) et une clé
+   API → `ELEVENLABS_API_KEY` dans `.env` et dans l'environnement du
+   déploiement (`npx -y @insforge/cli deployments env set ELEVENLABS_API_KEY …`).
+2. Crée les voix une fois : `node --env-file=.env scripts/setup-voices.mjs`
+   (`--dry-run` pour voir les descriptions, `--only=aicha,kofi --force` pour
+   refaire). Voice Design v3, avec l'intro du créateur comme référence pour
+   les 16 premiers. Les ids vont dans `lib/voices.json` (à committer), les
+   aperçus dans `voices-preview/`.
+3. Sans clé ou sans voix pour un créateur, la vidéo part avec la voix de
+   Seedance (et l'intro en référence quand elle existe) : rien ne bloque.
+   `ELEVENLABS_TTS_MODEL` change le modèle (par défaut `eleven_v3`).
+
 ## pawaPay (Mobile Money)
 
 Même compte pawaPay et même flux que l'app précédente, qui tournait déjà en
