@@ -76,6 +76,22 @@ export function actorSheetUrl(a: Actor, appUrl: string): string {
   return new URL(`/creators/${a.files}/sheet.jpg`, origin).toString();
 }
 
+/** Whether the creator has a voice recording (cut from their intro video). */
+export function hasVoice(a: Actor): boolean {
+  return a.intro !== false;
+}
+
+/**
+ * Public URL of the creator's voice (public/creators/<files>/voice.mp3),
+ * sent to Seedance as the audio reference so every ad keeps the creator's
+ * own voice and accent. Same origin rule as the character sheet.
+ */
+export function actorVoiceUrl(a: Actor, appUrl: string): string | null {
+  if (!hasVoice(a)) return null;
+  const origin = appUrl.startsWith("https://") ? appUrl : "https://h8fj6hqu.insforge.site";
+  return new URL(`/creators/${a.files}/voice.mp3`, origin).toString();
+}
+
 export function getActor(id: string | null | undefined): Actor | undefined {
   return ACTORS.find((a) => a.id === id);
 }

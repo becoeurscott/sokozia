@@ -1,6 +1,6 @@
 import "server-only";
 import { getDb, now } from "../db";
-import { actorSheetUrl, getActor } from "../actors";
+import { actorSheetUrl, actorVoiceUrl, getActor } from "../actors";
 import { MAX_CLIP_SECONDS, clipCount, videoPrice, type Duration, type Style } from "../models";
 import type { BriefContent, Generation, GenerationPart, Message, Order } from "../types";
 import { videoProvider } from "../providers";
@@ -105,6 +105,7 @@ export async function submitGeneration(generation: Generation): Promise<Generati
   const actor = getActor(generation.actor_id)!;
   const provider = videoProvider();
   const actorImageUrl = actorSheetUrl(actor, appUrl());
+  const voiceUrl = actorVoiceUrl(actor, appUrl());
   const webhookUrl = provider.name === "higgsfield" ? `${appUrl()}/api/webhooks/higgsfield?g=${generation.id}` : null;
   const count = clipCount(generation.duration);
   // Prompts were written at creation (with Claude's shots); rebuild only for old rows.
@@ -120,6 +121,7 @@ export async function submitGeneration(generation: Generation): Promise<Generati
           prompt,
           duration: Math.min(MAX_CLIP_SECONDS, generation.duration - part * MAX_CLIP_SECONDS),
           actorImageUrl,
+          voiceUrl,
           productImageUrl: generation.product_image_url,
           webhookUrl,
         }),

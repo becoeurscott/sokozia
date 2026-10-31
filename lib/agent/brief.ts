@@ -1,6 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import { ACTORS, getActor, suggestActor, type Actor } from "../actors";
+import { ACTORS, getActor, hasVoice, suggestActor, type Actor } from "../actors";
 import { MAX_CLIP_SECONDS, clipCount, closestDuration, isDuration, type Duration, type Style } from "../models";
 import type { BriefContent, ProductInsight } from "../types";
 import { isInsForgeConfigured } from "../db";
@@ -513,7 +513,9 @@ export function buildVideoPrompts(
       n > 1 ? `Part ${i + 1} of ${n} of the same ad: ${i === 0 ? "it opens on the hook." : "it continues the previous part seamlessly (same person, outfit, setting, light and voice) and ends on the call to action."}` : null,
       `The first reference image is the presenter's character sheet: ${actor.look}. Keep this exact face, hair, outfit and identity throughout.`,
       `${pronoun} TALKS directly into the lens for the whole clip: lips, jaw and face move clearly and in sync with every word, expressive eyebrows, natural head movement and hand gestures. Never a closed-mouth smile while the voice plays, no voice-over.`,
-      `${pronoun} speaks French with a natural ${accentOf(actor.country)} accent, a ${actor.age}-year-old ${person}'s voice, ${VOICE_EN[actor.voice] ?? "warm and natural"}, like a voice note to friends. ${pronoun} says: "${line}"`,
+      hasVoice(actor)
+        ? `${pronoun === "She" ? "Her" : "His"} voice is exactly the voice of the audio reference: same timbre and the same natural ${accentOf(actor.country)} French accent, ${VOICE_EN[actor.voice] ?? "warm and natural"}, like a voice note to friends. ${pronoun} says: "${line}"`
+        : `${pronoun} speaks French with a natural ${accentOf(actor.country)} accent, a ${actor.age}-year-old ${person}'s voice, ${VOICE_EN[actor.voice] ?? "warm and natural"}, like a voice note to friends. ${pronoun} says: "${line}"`,
       brief.shots?.[i] ? `Timeline: ${brief.shots[i]}` : `Timeline: mostly a tight selfie close-up of ${pronoun === "She" ? "her" : "his"} talking face, with one short close-up of the product in hand while the voice continues.`,
       hasPhoto
         ? `The second reference image is the product: ${product}. Reproduce it exactly (shape, colours, packaging, label).`

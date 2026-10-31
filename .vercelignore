@@ -4,3 +4,4 @@ public/uploads/
 .claude/
 .agents/
 *.mp4.tmp
+tests-video/

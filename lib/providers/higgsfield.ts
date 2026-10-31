@@ -55,6 +55,8 @@ export function buildBody(input: SubmitInput): { path: string; body: Record<stri
     body: {
       prompt: input.prompt,
       image_urls: images,
+      // The creator's recorded voice: Seedance speaks the script with it (tested 2026-10-31).
+      ...(input.voiceUrl ? { audio_urls: [input.voiceUrl] } : {}),
       duration: Math.min(MAX_CLIP_SECONDS, input.duration),
       aspect_ratio: "9:16",
       resolution: MODEL.higgsfield.resolution,

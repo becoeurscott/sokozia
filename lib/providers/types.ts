@@ -10,6 +10,8 @@ export interface SubmitInput {
   duration: number;
   actorImageUrl: string;
   productImageUrl: string | null;
+  /** The creator's own voice, sent as the audio reference (null when they have none). */
+  voiceUrl?: string | null;
   webhookUrl: string | null;
 }
 
