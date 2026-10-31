@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { WalletPanel } from "@/components/account/WalletPanel";
+import { isAdmin } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Mon compte · Sokozia" };
@@ -16,9 +17,16 @@ export default async function ComptePage() {
       <header className="border-b border-line bg-bg/85">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
           <Logo href="/studio" />
-          <Button href="/studio" variant="outline" size="sm">
-            ← Retour au studio
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAdmin(user) && (
+              <Button href="/admin" variant="soft" size="sm">
+                Admin
+              </Button>
+            )}
+            <Button href="/studio" variant="outline" size="sm">
+              ← Retour au studio
+            </Button>
+          </div>
         </div>
       </header>
       <div className="mx-auto max-w-4xl px-4 py-10">

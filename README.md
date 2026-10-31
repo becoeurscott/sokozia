@@ -8,6 +8,8 @@ Money ou carte) ou avec le portefeuille : un solde en FCFA rechargé par
 packs de 2, 5 ou 10 vidéos, et l'historique des transactions dans « Mon
 compte » (`lib/services/wallet.ts`, migration `20261029151536_sz-wallet.sql`).
 Un paiement reçu pour une vidéo déjà payée est crédité sur le solde.
+Les admins (`ADMIN_EMAILS`, emails séparés par des virgules) ouvrent `/admin`
+pour chercher un client et ajouter du crédit sur son solde.
 
 - **Front / API** : Next.js 15 (App Router), Tailwind 4, lucide-react
 - **Auth, base, fichiers** : [InsForge](https://insforge.dev) (`@insforge/sdk`)
