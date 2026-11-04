@@ -31,7 +31,7 @@ export async function startVideoJob(style: StyleRow, prompt: string, duration: n
 
 type ImageProvider = { provider: string; hf_endpoint: string; hf_params: Record<string, unknown> };
 
-export async function startImageJob(prompt: string, aspect: "16:9" | "9:16", refs: string[]) {
+export async function startImageJob(prompt: string, aspect: string, refs: string[]) {
   const db = adminClient().database;
   const { data } = await db.from("settings").select("key, value").in("key", ["image_provider", "image_model"]);
   const s = Object.fromEntries((data ?? []).map((r: { key: string; value: unknown }) => [r.key, r.value]));
@@ -39,7 +39,7 @@ export async function startImageJob(prompt: string, aspect: "16:9" | "9:16", ref
   if (ip?.provider === "higgsfield") {
     return `hf:${await hfSubmit(ip.hf_endpoint, { prompt, aspect_ratio: aspect, ...ip.hf_params, ...(refs.length ? { image_urls: await directAll(refs.slice(0, 4)) } : {}) })}`;
   }
-  return af.startImage(s.image_model as af.ImageModel, prompt, aspect, refs);
+  return af.startImage(s.image_model as af.ImageModel, prompt, aspect as "16:9" | "9:16", refs);
 }
 
 export async function getJobStatus(taskId: string) {

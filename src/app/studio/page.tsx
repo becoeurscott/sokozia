@@ -4,6 +4,7 @@ import { currencyOf, loadPricing } from "@/lib/pricing";
 import { getWallet } from "@/lib/wallet";
 import RenderStudio, { type ModelCard, type Recent } from "@/components/render/RenderStudio";
 import { DIRECTORS } from "@/lib/director";
+import { CREATORS, creatorFiles } from "@/content/creators";
 
 export const metadata = { title: "Studio — Sokozia" };
 const ETA: Record<string, number> = { eclair: 100, naturel: 160, studio: 200, signature: 260 };
@@ -25,7 +26,7 @@ export default async function Page() {
   const recent: Recent[] = ((vids ?? []) as { id: string; status: string; video_url: string | null; image_url: string | null; aspect_ratio: string | null; prompt: string | null; created_at: string }[])
     .map((v) => ({ id: v.id, status: v.status, url: v.video_url, image: v.image_url?.startsWith("http") ? v.image_url : null, aspect: v.aspect_ratio ?? "9:16", prompt: v.prompt ?? "", created_at: v.created_at }));
   return (
-    <RenderStudio models={models} directors={Object.entries(DIRECTORS).map(([id, d]) => ({ id, name: d.name, hint: d.hint }))} balance={wallet.balance} currency={currency === "XOF" || currency === "XAF" ? "FCFA" : currency}
+    <RenderStudio models={models} avatars={CREATORS.map((c) => ({ id: c.id, name: c.name, specialty: c.specialty, country: c.country, portrait: creatorFiles(c.id).portrait }))} directors={Object.entries(DIRECTORS).map(([id, d]) => ({ id, name: d.name, hint: d.hint }))} balance={wallet.balance} currency={currency === "XOF" || currency === "XAF" ? "FCFA" : currency}
       isAdmin={profile.is_admin} name={profile.full_name} recent={recent} />
   );
 }

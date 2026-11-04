@@ -35,6 +35,7 @@ export async function loadPricing() {
   return {
     multipliers: s.multipliers as Record<Plan, number>,
     margin: Number(s.margin ?? 1.4),
+    imageCostUsd: Number((s.admin_budget as { imageCostUsd?: number } | undefined)?.imageCostUsd ?? 0.12),
     monthlyVideos: Number(s.monthly_videos),
     fx: s.fx as Record<string, number>,
     styles: parsed,

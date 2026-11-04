@@ -293,25 +293,44 @@ JSON : {"prompt": "le prompt en anglais"}`);
 
 // Générateur direct : Claude regarde la photo du produit, choisit lui-même le style de pub le plus
 // adapté (s'il n'est pas imposé), puis écrit le prompt vidéo pour le modèle qui va la tourner.
-export async function directAd(o: { director: DirectorId; image: string; request: string; duration: number; aspect: string; endpoint: string | null }) {
+export type CastMember = { id: string; name: string; gender: string; age: number; specialty: string; languages: string[]; country: string; look: string };
+
+export async function directAd(o: {
+  director: DirectorId; image: string; request: string; duration: number; aspect: string; endpoint: string | null;
+  creator: CastMember | "auto" | null; cast: CastMember[];
+}) {
   const styles = FORMATS.map((f) => `- ${f.id} (${f.label}) : ${f.when}. ${f.direction}`).join("\n");
+  const fixed = o.creator && o.creator !== "auto" ? o.creator : null;
+  const castList = o.cast.map((c) => `- ${c.id} : ${c.name}, ${c.age} ans, ${c.country}, ${c.specialty}, parle ${c.languages.join("/")}`).join("\n");
+  const who = !o.creator ? "Pas de créateur : la vidéo montre le produit seul (mains, décor), sans visage."
+    : fixed ? `Le créateur est imposé : ${fixed.name} (${fixed.age} ans, ${fixed.country}). Apparence : ${fixed.look}. Il parle ${fixed.languages.join(" ou ")}.`
+    : `Choisis le créateur le plus crédible pour ce produit et cette cible parmi :\n${castList}`;
+  const fallbackCreator = fixed ?? (o.creator === "auto" ? o.cast[0] : null);
   const fallback = {
-    style: "Démonstration",
-    prompt: `Authentic UGC-style ad filmed on a phone. The exact product from the reference image is the hero: keep its shape, colors, label and logo identical. ${o.request || "A friendly African creator presents the product and shows its main benefit"}. Natural light, real African setting, handheld camera, ${o.duration} seconds, ${o.aspect}.`,
+    style: "Démonstration", creatorId: fallbackCreator?.id ?? null,
+    prompt: `Authentic UGC-style ad filmed on a phone. ${fallbackCreator ? `${fallbackCreator.name} presents` : "Hands present"} the exact product from the reference image: keep its shape, colors, label and logo identical. ${o.request || "Show its main benefit"}. Natural light, real African setting, handheld camera, ${o.duration} seconds, ${o.aspect}.`,
+    framePrompt: fallbackCreator ? `Photorealistic smartphone photo, ${o.aspect} frame. The person from @Image1 holds the exact product from @Image2 near their face, smiling at the camera, in a real African home or shop. Keep the person's face, skin, hair and outfit identical to @Image1 and the product identical to @Image2. Natural daylight.` : null as string | null,
   };
   try {
     const r = await Promise.race([
-      askJSON<{ style: string; prompt: string }>(`Tu es le réalisateur de cette pub vidéo. L'image jointe est la PHOTO DU PRODUIT : c'est aussi la première image de la vidéo.
+      askJSON<{ style: string; creatorId?: string | null; prompt: string; framePrompt?: string | null }>(`Tu es le réalisateur de cette pub vidéo. L'image jointe est la PHOTO DU PRODUIT.
 1. Regarde le produit (type, couleurs, étiquette, texte lisible, gamme de prix probable) et déduis à qui il se vend.
 2. ${o.request ? `Le client demande : « ${o.request} ». Respecte sa demande, complète ce qui manque.` : "Le client n'a rien précisé : décide toi-même de tout."}
-3. Choisis le style de pub le plus efficace parmi :
+3. CRÉATEUR : ${who}
+4. Choisis le style de pub le plus efficace parmi :
 ${styles}
-4. Écris le prompt vidéo EN ANGLAIS (70 à 130 mots) pour une vidéo de ${o.duration} secondes au format ${o.aspect}, adapté au modèle :
+5. ${o.creator ? `Écris "framePrompt" EN ANGLAIS (50 à 90 mots) : la PREMIÈRE IMAGE de la vidéo, une photo réaliste au téléphone, format ${o.aspect}. @Image1 = la fiche du créateur (garder visage, peau, cheveux et tenue identiques), @Image2 = le produit (identique). Décris la pose avec le produit, le lieu africain réel, la lumière.` : `"framePrompt" : null.`}
+6. Écris "prompt" EN ANGLAIS (70 à 130 mots) pour la vidéo de ${o.duration} secondes au format ${o.aspect}. ${o.creator ? "La vidéo part de cette première image : décris surtout le mouvement, les gestes, l'expression et la parole." : "La vidéo part de la photo du produit."} Adapté au modèle :
 ${modelGuide(o.endpoint)}
-Règles : le produit reste strictement identique à la photo (forme, couleurs, étiquette, logo). Style UGC authentique filmé au téléphone. Personnes et lieux africains, crédibles. Une réplique courte et naturelle en français entre guillemets (sauf si le client demande une autre langue), adaptée à ${o.duration} secondes. Pas de texte incrusté à l'écran.
-Réponds en JSON : {"style": "nom du style en français", "prompt": "..."}`, { model: DIRECTORS[o.director].model, image: o.image }),
+Règles : produit strictement identique (forme, couleurs, étiquette, logo). Style UGC authentique filmé au téléphone. Personnes et lieux africains, crédibles. ${o.creator ? "Une réplique courte et naturelle entre guillemets dans la langue du créateur (français par défaut), adaptée à la durée." : "Pas de visage."} Pas de texte incrusté à l'écran.
+Réponds en JSON : {"style": "nom du style en français", "creatorId": ${o.creator ? '"id du créateur"' : "null"}, "framePrompt": ${o.creator ? '"..."' : "null"}, "prompt": "..."}`, { model: DIRECTORS[o.director].model, image: o.image }),
       new Promise<never>((_, no) => setTimeout(() => no(new Error("timeout")), 45000)),
     ]);
-    return r?.prompt?.trim() ? { style: r.style?.trim() || fallback.style, prompt: r.prompt.trim() } : fallback;
+    if (!r?.prompt?.trim()) return fallback;
+    const creatorId = fixed?.id ?? (o.creator === "auto" ? (o.cast.find((c) => c.id === r.creatorId)?.id ?? fallback.creatorId) : null);
+    return {
+      style: r.style?.trim() || fallback.style, creatorId, prompt: r.prompt.trim(),
+      framePrompt: o.creator ? (r.framePrompt?.trim() || fallback.framePrompt) : null,
+    };
   } catch { return fallback; }
 }

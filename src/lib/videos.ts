@@ -4,7 +4,7 @@ import { refundPass } from "./passes";
 import { walletApply } from "./wallet";
 import { syncImages } from "./project";
 
-type Row = { created_at?: string; price?: number | null; currency?: string | null; wallet_tx?: string | null; id: string; created_by: string; status: string; apiframe_task_id: string | null; pass_id: string | null; video_url: string | null; image_url?: string | null; conversation_id?: string | null; style_id?: string; duration_s?: number; prompt?: string };
+type Row = { director_prompt?: string | null; aspect_ratio?: string | null; created_at?: string; price?: number | null; currency?: string | null; wallet_tx?: string | null; id: string; created_by: string; status: string; apiframe_task_id: string | null; pass_id: string | null; video_url: string | null; image_url?: string | null; conversation_id?: string | null; style_id?: string; duration_s?: number; prompt?: string };
 
 async function failVideo(v: Row, error: string) {
   const { data: claimed } = await adminClient().database.from("videos")
@@ -39,6 +39,22 @@ export async function syncVideo(v: Row): Promise<Row> {
     }
   }
 
+  // Générateur direct avec créateur : l'image d'ouverture est prête -> on lance la vidéo à partir d'elle.
+  if (v.status === "pending" && v.image_url === "framejob" && v.apiframe_task_id) {
+    if (v.created_at && Date.now() - new Date(v.created_at).getTime() > 45 * 60000) return failVideo(v, "timeout");
+    const img = await getJobStatus(v.apiframe_task_id);
+    if (img.status === "failed") return failVideo(v, String(img.error ?? "frame failed"));
+    if (img.status !== "ready" || !img.url) return v;
+    const { data: st } = await db.from("styles").select(STYLE_COLS).eq("id", v.style_id!).limit(1);
+    try {
+      const jobId = await startVideoJob(st![0] as StyleRow, v.director_prompt ?? v.prompt!, v.duration_s!, { startImage: img.url, aspect: v.aspect_ratio ?? "9:16" });
+      const { data: moved } = await db.from("videos").update({ apiframe_task_id: jobId, status: "processing", image_url: img.url }).eq("id", v.id).eq("status", "pending").select("id");
+      return moved?.length ? { ...v, status: "processing", apiframe_task_id: jobId, image_url: img.url } : v;
+    } catch (e) {
+      return failVideo(v, String(e));
+    }
+  }
+
   if (v.status !== "processing" || !v.apiframe_task_id) return v;
   // Filet de sécurité : une génération bloquée depuis plus de 45 min est annulée et remboursée.
   if (v.created_at && Date.now() - new Date(v.created_at).getTime() > 45 * 60000) return failVideo(v, "timeout");
@@ -56,4 +72,4 @@ export async function syncVideo(v: Row): Promise<Row> {
   return { ...v, status: "ready", video_url: up.url };
 }
 
-export const VIDEO_COLS = "id, created_by, status, apiframe_task_id, pass_id, video_url, image_url, conversation_id, style_id, duration_s, prompt, price, currency, wallet_tx, created_at";
+export const VIDEO_COLS = "id, created_by, status, apiframe_task_id, pass_id, video_url, image_url, conversation_id, style_id, duration_s, prompt, price, currency, wallet_tx, created_at, director_prompt, aspect_ratio";

@@ -27,11 +27,12 @@ export function priceFromCost(p: Pricing, usd: number, currency: string) {
   return Math.max(50, Math.ceil(local / 50) * 50);
 }
 
-export async function quote(styleId: string, duration: number, aspect: string, currency: string, pricing?: Pricing, director: DirectorId = "sonnet") {
+export async function quote(styleId: string, duration: number, aspect: string, currency: string, pricing?: Pricing, director: DirectorId = "sonnet", withCreator = false) {
   const p = pricing ?? await loadPricing();
   const style = p.styles.find((s) => s.id === styleId);
   if (!style || !style.durations.includes(duration) || !style.aspect_ratios.includes(aspect)) return null;
   // Coût réel = vidéo (Higgsfield) + réalisation par Claude (directeur choisi).
-  const usd = (await costUsd(style, duration, aspect)) + DIRECTORS[director].usd;
+  // + image d'ouverture avec le créateur (fiche + produit) quand un visage apparaît.
+  const usd = (await costUsd(style, duration, aspect)) + DIRECTORS[director].usd + (withCreator ? p.imageCostUsd : 0);
   return { style, usd, price: priceFromCost(p, usd, currency) };
 }

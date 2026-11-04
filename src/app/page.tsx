@@ -31,31 +31,30 @@ export default async function Home() {
   const from = Math.min(...Object.values(fromBy).filter(Boolean));
   return (
     <div className="overflow-x-hidden">
-      {/* Hero */}
-      <section className="relative">
-        <div className="absolute -right-40 -top-40 h-[30rem] w-[30rem] rounded-full bg-brand/15 blur-3xl" />
-        <div className="absolute -left-40 top-60 h-[24rem] w-[24rem] rounded-full bg-accent/10 blur-3xl" />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-10 sm:pt-16 text-center">
-          <div>
-            <p className="mx-auto w-fit rounded-full border border-line bg-card px-4 py-1.5 text-sm font-semibold">
-              <span className="sm:hidden">Paiement Mobile Money</span><span className="hidden sm:inline">Orange Money · MTN MoMo · Moov · Airtel · M-Pesa</span>
-            </p>
-            <h1 className="mt-5 mx-auto max-w-4xl text-[2rem] font-extrabold leading-[1.1] tracking-tight sm:text-6xl sm:leading-[1.05]">
-              Des pubs vidéo avec des <span className="relative whitespace-nowrap text-brand">visages africains<svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" preserveAspectRatio="none"><path d="M2 7 Q100 0 198 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" /></svg></span>, pour des vendeurs africains
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-muted">
-              Pas d&apos;acteur, pas de caméra, pas de montage. Tu décris ton produit, notre directrice de création IA écrit le script et on crée la vidéo pour TikTok, WhatsApp et Facebook.
-            </p>
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <Link href="/inscription" className="btn text-lg">Créer ma vidéo →</Link>
-              <Link href="/tarifs" className="btn-ghost">Voir les prix</Link>
-            </div>
-            <p className="mt-4 text-sm text-muted">À partir de <b className="text-ink">{fmt(from, "XAF")}</b> la vidéo · Inscription gratuite</p>
+      {/* Hero : vidéo en fond, en boucle */}
+      <section className="relative isolate overflow-hidden bg-ink text-white">
+        <video src="/showcase/ugc/grwm-perruque.mp4" poster="/showcase/ugc/grwm-perruque.jpg" autoPlay muted loop playsInline preload="auto" aria-hidden
+          className="absolute inset-0 -z-20 h-full w-full object-cover object-[50%_22%]" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/55 via-black/45 to-black/75" />
+        <div className="relative mx-auto flex min-h-[78svh] max-w-6xl flex-col items-center justify-center px-4 pb-16 pt-14 text-center sm:min-h-[86svh]">
+          <p className="mx-auto w-fit rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-sm font-semibold backdrop-blur">
+            <span className="sm:hidden">Mobile Money ou carte</span><span className="hidden sm:inline">Orange Money · MTN MoMo · Moov · Wave · Carte bancaire</span>
+          </p>
+          <h1 className="mx-auto mt-5 max-w-4xl text-[2.1rem] font-extrabold leading-[1.1] tracking-tight drop-shadow-[0_2px_20px_rgba(0,0,0,.45)] sm:text-6xl sm:leading-[1.05]">
+            Des pubs vidéo avec des <span className="relative whitespace-nowrap text-brand">visages africains<svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" preserveAspectRatio="none"><path d="M2 7 Q100 0 198 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" /></svg></span>, pour des vendeurs africains
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-white/85">
+            Pas d&apos;acteur, pas de caméra, pas de montage. Ajoute la photo de ton produit, Claude réalise la pub et on crée la vidéo pour TikTok, WhatsApp et Facebook.
+          </p>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link href="/inscription" className="btn text-lg">Créer ma vidéo →</Link>
+            <Link href="/tarifs" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 font-semibold text-white backdrop-blur transition hover:bg-white/20">Voir les prix</Link>
           </div>
+          <p className="mt-4 text-sm text-white/75">À partir de <b className="text-white">{fmt(from, "XAF")}</b> la vidéo · Inscription gratuite</p>
         </div>
       </section>
 
-      <section className="pb-16"><Showcase /></section>
+      <section className="py-16"><Showcase /></section>
 
       {/* Chiffres */}
       <section className="border-y border-line bg-card">

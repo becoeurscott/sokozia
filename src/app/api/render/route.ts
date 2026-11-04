@@ -3,7 +3,8 @@ import { adminClient, getSession } from "@/lib/insforge";
 import { currencyOf, fmt, loadPricing } from "@/lib/pricing";
 import { quote } from "@/lib/quote";
 import { walletApply } from "@/lib/wallet";
-import { direct, STYLE_COLS, startVideoJob, type StyleRow } from "@/lib/providers";
+import { direct, STYLE_COLS, startImageJob, startVideoJob, type StyleRow } from "@/lib/providers";
+import { CREATORS } from "@/content/creators";
 import { directAd, DIRECTORS, isDirector, type DirectorId } from "@/lib/director";
 import { syncVideo, VIDEO_COLS } from "@/lib/videos";
 
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
   }
   const currency = currencyOf(profile?.country ?? "CI");
   const d = u.searchParams.get("director");
-  const q = await quote(u.searchParams.get("model") ?? "", Number(u.searchParams.get("duration")), u.searchParams.get("aspect") ?? "9:16", currency, undefined, isDirector(d) ? d : "sonnet");
+  const q = await quote(u.searchParams.get("model") ?? "", Number(u.searchParams.get("duration")), u.searchParams.get("aspect") ?? "9:16", currency, undefined, isDirector(d) ? d : "sonnet", u.searchParams.get("creator") !== "none");
   if (!q) return NextResponse.json({ error: "Combinaison indisponible." }, { status: 400 });
   return NextResponse.json({ price: q.price, label: fmt(q.price, currency) });
 }
@@ -31,14 +32,16 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const { user, profile } = await getSession();
   if (!user || !profile) return NextResponse.json({ error: "Connecte-toi d'abord." }, { status: 401 });
-  const b = (await req.json()) as { imageUrl?: string; prompt?: string; duration?: number; aspect?: string; model?: string; director?: string };
+  const b = (await req.json()) as { imageUrl?: string; prompt?: string; duration?: number; aspect?: string; model?: string; director?: string; creator?: string };
+  // Créateur : "auto" (Claude choisit), un id d'avatar, ou "none" (produit seul).
+  const creatorSel = b.creator === "none" ? null : CREATORS.find((c) => c.id === b.creator) ?? "auto";
   const director: DirectorId = isDirector(b.director) ? b.director : "sonnet";
   const prompt = (b.prompt ?? "").trim().slice(0, 1500);
   if (!b.imageUrl || !/^https:\/\//.test(b.imageUrl)) return NextResponse.json({ error: "Ajoute la photo de ton produit." }, { status: 400 });
 
   const currency = currencyOf(profile.country);
   const pricing = await loadPricing();
-  const q = await quote(b.model ?? "", Number(b.duration), b.aspect ?? "9:16", currency, pricing, director);
+  const q = await quote(b.model ?? "", Number(b.duration), b.aspect ?? "9:16", currency, pricing, director, creatorSel !== null);
   if (!q) return NextResponse.json({ error: "Ce modèle ne propose pas cette durée ou ce format." }, { status: 400 });
 
   const db = adminClient().database;
@@ -60,10 +63,21 @@ export async function POST(req: Request) {
   try {
     const { data: st } = await db.from("styles").select(STYLE_COLS).eq("id", q.style.id).limit(1);
     const row = st![0] as StyleRow;
-    const ad = await directAd({ director, image: await direct(b.imageUrl), request: prompt, duration: Number(b.duration), aspect: b.aspect ?? "9:16", endpoint: row.hf_endpoint ?? null });
-    const jobId = await startVideoJob(row, ad.prompt, Number(b.duration), { startImage: b.imageUrl, aspect: b.aspect });
-    await db.from("videos").update({ apiframe_task_id: jobId, status: "processing", prompt: prompt || `Style ${ad.style} (choisi par ${DIRECTORS[director].name})` }).eq("id", videoId);
-    return NextResponse.json({ videoId, style: ad.style, director: DIRECTORS[director].name });
+    const productUrl = await direct(b.imageUrl);
+    const ad = await directAd({ director, image: productUrl, request: prompt, duration: Number(b.duration), aspect: b.aspect ?? "9:16", endpoint: row.hf_endpoint ?? null, creator: creatorSel, cast: CREATORS });
+    const label = prompt || `Style ${ad.style} (choisi par ${DIRECTORS[director].name})`;
+    if (ad.creatorId && ad.framePrompt) {
+      // 1re étape : image d'ouverture avec le vrai visage du créateur (fiche) et le produit. La vidéo part ensuite de cette image.
+      const site = /localhost|127\.0\.0\.1/.test(process.env.NEXT_PUBLIC_APP_URL ?? "") ? "https://sokozia.com" : process.env.NEXT_PUBLIC_APP_URL;
+      const sheet = `${site}/creators/${ad.creatorId}/sheet.jpg`;
+      const frameJob = await startImageJob(ad.framePrompt, b.aspect ?? "9:16", [sheet, productUrl]);
+      await db.from("videos").update({ apiframe_task_id: frameJob, image_url: "framejob", status: "pending", creator_id: ad.creatorId, director_prompt: ad.prompt, prompt: label }).eq("id", videoId);
+    } else {
+      const jobId = await startVideoJob(row, ad.prompt, Number(b.duration), { startImage: b.imageUrl, aspect: b.aspect });
+      await db.from("videos").update({ apiframe_task_id: jobId, status: "processing", director_prompt: ad.prompt, prompt: label }).eq("id", videoId);
+    }
+    const creator = CREATORS.find((c) => c.id === ad.creatorId);
+    return NextResponse.json({ videoId, style: ad.style, director: DIRECTORS[director].name, creator: creator?.name ?? null });
   } catch (e) {
     await db.from("videos").update({ status: "failed", error: String(e).slice(0, 500) }).eq("id", videoId);
     if (!free) await walletApply(user.id, q.price, "refund", `Remboursement · ${label}`, videoId, currency);

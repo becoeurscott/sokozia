@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, Clapperboard, Clock, Download, Home, ImagePlus, Loader2, Menu, Plus, RectangleVertical, RotateCcw, Sparkles, Tag, Wallet, X } from "lucide-react";
 import { Pick } from "./Pick";
+import { AvatarPick, type AvatarCard } from "./AvatarPick";
 import { TopupSheet } from "./Topup";
 import { RenderLoading } from "./RenderLoading";
 
@@ -24,8 +25,8 @@ async function shrink(file: File): Promise<Blob> {
   return new Promise((ok) => c.toBlob((b) => ok(b ?? file), "image/jpeg", 0.85));
 }
 
-export default function RenderStudio({ models, directors, balance: initialBalance, currency, isAdmin, name, recent: initialRecent }: {
-  models: ModelCard[]; directors: DirectorCard[]; balance: number; currency: string; isAdmin: boolean; name: string; recent: Recent[];
+export default function RenderStudio({ models, directors, avatars, balance: initialBalance, currency, isAdmin, name, recent: initialRecent }: {
+  models: ModelCard[]; directors: DirectorCard[]; avatars: AvatarCard[]; balance: number; currency: string; isAdmin: boolean; name: string; recent: Recent[];
 }) {
   const [balance, setBalance] = useState(initialBalance);
   const [recent, setRecent] = useState(initialRecent);
@@ -37,6 +38,7 @@ export default function RenderStudio({ models, directors, balance: initialBalanc
   const [duration, setDuration] = useState(model?.durations.includes(10) ? 10 : model?.durations[0] ?? 5);
   const [aspect, setAspect] = useState("9:16");
   const [director, setDirector] = useState("sonnet");
+  const [creator, setCreator] = useState("auto");
   const [prices, setPrices] = useState<Record<number, number>>({});
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -59,10 +61,10 @@ export default function RenderStudio({ models, directors, balance: initialBalanc
     let live = true;
     setPrices({});
     Promise.all(model.durations.map((d) =>
-      fetch(`/api/render?model=${model.id}&duration=${d}&aspect=${encodeURIComponent(aspect)}&director=${director}`).then((r) => r.json()).then((j) => [d, j.price as number] as const).catch(() => [d, 0] as const),
+      fetch(`/api/render?model=${model.id}&duration=${d}&aspect=${encodeURIComponent(aspect)}&director=${director}&creator=${creator}`).then((r) => r.json()).then((j) => [d, j.price as number] as const).catch(() => [d, 0] as const),
     )).then((rows) => live && setPrices(Object.fromEntries(rows.filter(([, p]) => p > 0))));
     return () => { live = false; };
-  }, [model, aspect, director]);
+  }, [model, aspect, director, creator]);
 
   const price = prices[duration];
   const missing = price && !isAdmin ? Math.max(0, price - balance) : 0;
@@ -89,7 +91,7 @@ export default function RenderStudio({ models, directors, balance: initialBalanc
     const dname = directors.find((d) => d.id === director)?.name ?? "Claude";
     // L'écran de rendu démarre tout de suite : Claude réalise la pub, puis le modèle la tourne.
     setJob({ id: null, image: image!, aspect, eta: model.eta + 20, startedAt: Date.now(), note: `${dname} réalise ta pub…` });
-    const r = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl: image, prompt, duration, aspect, model: model.id, director }) })
+    const r = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl: image, prompt, duration, aspect, model: model.id, director, creator }) })
       .then((r) => r.json()).catch(() => ({ error: "Connexion perdue." }));
     setBusy(false);
     if (!r.videoId) {
@@ -98,7 +100,7 @@ export default function RenderStudio({ models, directors, balance: initialBalanc
       return setError(r.error ?? "La création n'a pas pu démarrer.");
     }
     if (!isAdmin) setBalance((b) => b - price);
-    setJob((j) => j && { ...j, id: r.videoId, note: `Style « ${r.style} » choisi par ${r.director}` });
+    setJob((j) => j && { ...j, id: r.videoId, eta: j.eta + (r.creator ? 60 : 0), note: `${r.creator ? `${r.creator} · ` : ""}style « ${r.style} » · par ${r.director}` });
     setRecent((l) => [{ id: r.videoId, status: "processing", url: null, image, aspect, prompt, created_at: new Date().toISOString() }, ...l]);
   }
 
@@ -203,6 +205,7 @@ export default function RenderStudio({ models, directors, balance: initialBalanc
                       className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium hover:bg-[#f6ebdc] ${image ? "text-ink/75" : "text-brand"}`}>
                       {uploading ? <Loader2 size={18} className="animate-spin" /> : <ImagePlus size={18} />}<span className="hidden sm:inline">{image ? "Changer" : "Photo produit"}</span>
                     </button>
+                    <AvatarPick value={creator} avatars={avatars} onChange={setCreator} />
                     <Pick title="Directeur de la pub" icon={<Clapperboard size={16} />} value={director} onChange={setDirector}
                       options={directors.map((d) => ({ value: d.id, label: d.name, hint: d.hint }))} />
                     <Pick title="Modèle" icon={<Sparkles size={16} />} value={modelId} onChange={setModelId}
