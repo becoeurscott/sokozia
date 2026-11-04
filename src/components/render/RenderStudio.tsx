@@ -42,7 +42,7 @@ export default function RenderStudio({ models, directors, avatars, balance: init
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [job, setJob] = useState<{ id: string | null; image: string; aspect: string; eta: number; startedAt: number; note: string; hook?: string } | null>(null);
-  const [done, setDone] = useState<{ url: string; aspect: string } | null>(null);
+  const [done, setDone] = useState<{ id: string; url: string; aspect: string } | null>(null);
   const setTopup = (t: { need?: number } | null) => { if (t) window.dispatchEvent(new CustomEvent("sz:topup", { detail: t.need })); };
   const file = useRef<HTMLInputElement>(null);
 
@@ -108,7 +108,7 @@ export default function RenderStudio({ models, directors, avatars, balance: init
     const r = await fetch(`/api/render?id=${job.id}`).then((r) => r.json()).catch(() => null);
     if (!r) return;
     if (r.status === "ready" && r.url) {
-      setDone({ url: r.url, aspect: job.aspect }); setJob(null);
+      setDone({ id: job.id, url: r.url, aspect: job.aspect }); setJob(null);
       setRecent((l) => l.map((v) => (v.id === job.id ? { ...v, status: "ready", url: r.url } : v)));
     } else if (r.status === "failed") {
       setJob(null);
@@ -135,7 +135,7 @@ export default function RenderStudio({ models, directors, avatars, balance: init
             <div className="mx-auto w-full max-w-2xl text-center">
               <video src={done.url} controls autoPlay playsInline className="mx-auto block max-h-[65vh] max-w-full rounded-3xl bg-black shadow-2xl" />
               <div className="mt-4 flex justify-center gap-2">
-                <a href={done.url} download className="flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white"><Download size={16} /> Télécharger</a>
+                <a href={`/api/videos/${done.id}/download`} className="flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white"><Download size={16} /> Télécharger</a>
                 <button onClick={reset} className="flex items-center gap-2 rounded-full border border-line bg-card px-5 py-3 text-sm font-semibold"><RotateCcw size={16} /> Nouvelle vidéo</button>
               </div>
             </div>
@@ -198,7 +198,7 @@ export default function RenderStudio({ models, directors, avatars, balance: init
               </div>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {recent.slice(0, 8).map((v) => (
-                  <button key={v.id} onClick={() => v.url && setDone({ url: v.url, aspect: v.aspect })} className="relative aspect-[9/16] overflow-hidden rounded-2xl bg-ink text-left">
+                  <button key={v.id} onClick={() => v.url && setDone({ id: v.id, url: v.url, aspect: v.aspect })} className="relative aspect-[9/16] overflow-hidden rounded-2xl bg-ink text-left">
                     {v.url ? <video src={v.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
                       : v.image ? (/* eslint-disable-next-line @next/next/no-img-element */ <img src={v.image} alt="" className="h-full w-full object-cover opacity-50 blur-[2px]" />) : null}
                     <span className="absolute inset-x-2 bottom-2 rounded-full bg-black/60 px-2 py-1 text-center text-[11px] font-semibold text-white">

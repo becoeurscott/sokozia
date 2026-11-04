@@ -25,7 +25,7 @@ export default async function Page() {
               : <div className="flex aspect-[9/16] items-center justify-center rounded-xl bg-line/50 px-2 text-center text-xs text-muted sm:text-sm">{LABEL[v.status]}</div>}
             <p className="mt-2 line-clamp-2 text-sm font-semibold">{v.conversations?.title ?? v.prompt ?? "Vidéo"}</p>
             <p className="text-xs text-muted">{new Date(v.created_at).toLocaleDateString("fr-FR")} · {LABEL[v.status]}</p>
-            {v.video_url && <a href={v.video_url} download className="mt-2 inline-block text-sm font-semibold text-brand underline">Télécharger</a>}
+            {v.video_url && <a href={`/api/videos/${v.id}/download`} className="mt-2 inline-block text-sm font-semibold text-brand underline">Télécharger</a>}
           </div>
         ))}
       </div>
