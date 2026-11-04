@@ -41,7 +41,7 @@ export default async function Home() {
               <span className="sm:hidden">Paiement Mobile Money</span><span className="hidden sm:inline">Orange Money · MTN MoMo · Moov · Airtel · M-Pesa</span>
             </p>
             <h1 className="mt-5 mx-auto max-w-4xl text-[2rem] font-extrabold leading-[1.1] tracking-tight sm:text-6xl sm:leading-[1.05]">
-              Tes vidéos pub avec des <span className="relative whitespace-nowrap text-brand">visages africains<svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" preserveAspectRatio="none"><path d="M2 7 Q100 0 198 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" /></svg></span>, prêtes en quelques minutes.
+              Des pubs vidéo avec des <span className="relative whitespace-nowrap text-brand">visages africains<svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" preserveAspectRatio="none"><path d="M2 7 Q100 0 198 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" /></svg></span>, pour des vendeurs africains
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-muted">
               Pas d&apos;acteur, pas de caméra, pas de montage. Tu décris ton produit, notre directrice de création IA écrit le script et on crée la vidéo pour TikTok, WhatsApp et Facebook.
