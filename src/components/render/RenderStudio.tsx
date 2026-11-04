@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Clapperboard, Clock, Download, Home, ImagePlus, Loader2, Menu, Plus, RectangleVertical, RotateCcw, Sparkles, Tag, Wallet, X } from "lucide-react";
+import { ArrowUp, Clapperboard, Clock, Download, ImagePlus, Loader2, RectangleVertical, RotateCcw, Sparkles, X } from "lucide-react";
 import { Pick } from "./Pick";
 import { AvatarPick, type AvatarCard } from "./AvatarPick";
-import { TopupSheet } from "./Topup";
 import { RenderLoading } from "./RenderLoading";
 
 export type DirectorCard = { id: string; name: string; hint: string };
@@ -44,8 +43,7 @@ export default function RenderStudio({ models, directors, avatars, balance: init
   const [busy, setBusy] = useState(false);
   const [job, setJob] = useState<{ id: string | null; image: string; aspect: string; eta: number; startedAt: number; note: string; hook?: string } | null>(null);
   const [done, setDone] = useState<{ url: string; aspect: string } | null>(null);
-  const [topup, setTopup] = useState<{ need?: number } | null>(null);
-  const [menu, setMenu] = useState(false);
+  const setTopup = (t: { need?: number } | null) => { if (t) window.dispatchEvent(new CustomEvent("sz:topup", { detail: t.need })); };
   const file = useRef<HTMLInputElement>(null);
 
   // Durée/format toujours valides pour le modèle choisi.
@@ -124,49 +122,12 @@ export default function RenderStudio({ models, directors, avatars, balance: init
   const reset = () => { setDone(null); setJob(null); setPrompt(""); setImage(null); setError(undefined); };
   const balanceLabel = useMemo(() => `${nf(balance)} ${currency}`, [balance, currency]);
 
-  const side = (
-    <div className="flex h-full flex-col">
-      <Link href="/" className="px-2 pb-6 pt-1 text-xl font-extrabold tracking-tight">Soko<span className="text-brand">zia</span></Link>
-      <nav className="space-y-1 text-[15px] font-medium">
-        <button onClick={() => { reset(); setMenu(false); }} className="flex w-full items-center gap-3 rounded-xl bg-[#f6ebdc] px-3 py-2.5"><Plus size={18} /> Nouvelle vidéo</button>
-        <Link href="/mes-videos" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-ink/80 hover:bg-[#f6ebdc]"><Clapperboard size={18} /> Mes vidéos</Link>
-        <Link href="/portefeuille" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-ink/80 hover:bg-[#f6ebdc]"><Wallet size={18} /> Portefeuille</Link>
-        <Link href="/tarifs" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-ink/80 hover:bg-[#f6ebdc]"><Tag size={18} /> Tarifs</Link>
-        <Link href="/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-ink/80 hover:bg-[#f6ebdc]"><Home size={18} /> Accueil</Link>
-      </nav>
-      <div className="mt-auto space-y-2">
-        <div className="rounded-2xl border border-line bg-card p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Mon solde</p>
-          <p className="mt-0.5 text-xl font-extrabold">{isAdmin ? "Admin · gratuit" : balanceLabel}</p>
-          <button onClick={() => setTopup({})} className="mt-2 w-full rounded-full bg-brand py-2 text-sm font-semibold text-white">Recharger</button>
-        </div>
-        <Link href="/compte" className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-[#f6ebdc]">
-          <span className="grid size-8 place-items-center rounded-full bg-brand/15 text-sm font-bold text-brand">{(name || "?").charAt(0).toUpperCase()}</span>
-          <span className="truncate text-sm font-semibold">{name || "Mon compte"}</span>
-        </Link>
-      </div>
-    </div>
-  );
+  // Le menu, le solde et la recharge sont dans le cadre commun (AppShell) : on lui parle par événements.
+  useEffect(() => { window.dispatchEvent(new CustomEvent("sz:balance", { detail: balance })); }, [balance]);
+  useEffect(() => { window.addEventListener("sz:new-video", reset); return () => window.removeEventListener("sz:new-video", reset); });
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-bg">
-      <aside className="hidden w-[260px] shrink-0 border-r border-line bg-[#fcf4e9] p-3 md:block">{side}</aside>
-      {menu && (
-        <div className="fixed inset-0 z-[60] md:hidden">
-          <div className="absolute inset-0 bg-ink/40" onClick={() => setMenu(false)} />
-          <aside className="absolute inset-y-0 left-0 w-[280px] bg-[#fcf4e9] p-3 shadow-2xl">
-            <button onClick={() => setMenu(false)} className="absolute right-3 top-3 rounded-lg p-1.5" aria-label="Fermer"><X size={20} /></button>
-            {side}
-          </aside>
-        </div>
-      )}
-      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-bg/90 px-3 py-2 backdrop-blur md:hidden">
-          <button onClick={() => setMenu(true)} className="rounded-lg p-2" aria-label="Menu"><Menu size={20} /></button>
-          <span className="font-extrabold">Soko<span className="text-brand">zia</span></span>
-          <button onClick={() => setTopup({})} className="flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-1.5 text-sm font-semibold"><Wallet size={14} /> {isAdmin ? "Admin" : balanceLabel}</button>
-        </header>
-
+    <>
         <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-10 sm:pt-[18vh]">
           {job ? (
             <RenderLoading image={job.image} aspect={job.aspect} etaSec={job.eta} startedAt={job.startedAt} note={job.note} hook={job.hook} />
@@ -249,8 +210,6 @@ export default function RenderStudio({ models, directors, avatars, balance: init
             </section>
           )}
         </div>
-      </main>
-      <TopupSheet open={!!topup} need={topup?.need} currencyLabel={currency} onClose={() => setTopup(null)} />
-    </div>
+    </>
   );
 }

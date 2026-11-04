@@ -6,7 +6,7 @@ import { activePasses } from "@/lib/passes";
 import { COUNTRIES, fmt, PLAN_LABELS, type Plan } from "@/lib/pricing";
 import { LEGAL } from "@/content/legal";
 import ProfileForm from "@/components/ProfileForm";
-import { signOut } from "../actions";
+import { signOut } from "@/app/actions";
 
 export const metadata = { title: "Mon compte — Sokozia" };
 
