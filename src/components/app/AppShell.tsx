@@ -85,7 +85,8 @@ export default function AppShell({ name, balance: initial, currency, isAdmin, si
           <Link href="/studio" className="font-extrabold">Soko<span className="text-brand">zia</span></Link>
           <button onClick={() => setTopup({})} className="flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-1.5 text-sm font-semibold"><Wallet size={14} /> {isAdmin ? "Admin" : `${nf(balance)} ${currency}`}</button>
         </header>
-        {children}
+        {/* Bloc pleine largeur : sinon les pages centrées (mx-auto) prennent la largeur de leur contenu et débordent. */}
+        <div className="w-full min-w-0">{children}</div>
       </main>
       <TopupSheet open={!!topup} need={topup?.need} currencyLabel={currency} onClose={() => setTopup(null)} />
     </div>
