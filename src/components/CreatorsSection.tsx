@@ -20,13 +20,13 @@ export default function CreatorsSection() {
         {CREATORS.map((c) => {
           const f = creatorFiles(c.id);
           return (
-            <button key={c.id} onClick={() => setPlaying(playing === c.id ? undefined : c.id)}
+            <button key={c.id} onClick={() => c.intro !== false && setPlaying(playing === c.id ? undefined : c.id)}
               className="group w-36 shrink-0 snap-start overflow-hidden rounded-2xl border border-line bg-card text-left sm:w-auto">
               <div className="relative aspect-[3/4] bg-ink">
                 {playing === c.id
                   ? <video src={f.intro} poster={f.portrait} autoPlay playsInline onEnded={() => setPlaying(undefined)} className="h-full w-full object-cover" />
                   : <img src={f.portrait} alt={`${c.name}, créatrice UGC`} loading="lazy" className="h-full w-full object-cover transition group-hover:scale-105" />}
-                {playing !== c.id && (
+                {playing !== c.id && c.intro !== false && (
                   <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">
                     <Play size={10} fill="white" /> Écouter
                   </span>

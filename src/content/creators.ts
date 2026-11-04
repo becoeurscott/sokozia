@@ -1,8 +1,10 @@
-// Les 16 créateurs Sokozia (personnages IA). Fichiers dans public/creators/<id>/ :
+// Les créateurs Sokozia (personnages IA). Fichiers dans public/creators/<id>/ :
 // portrait.jpg (cartes), sheet.jpg (fiche personnage envoyée avec chaque vidéo), intro.mp4 (présentation avec voix).
 export type Creator = {
   id: string; name: string; gender: "female" | "male"; age: number; specialty: string;
   languages: string[]; country: string; bio: string; featured: boolean; look: string;
+  /** false quand le créateur n'a pas encore de vidéo de présentation (intro.mp4). */
+  intro?: boolean;
 };
 
 export const CREATORS: Creator[] = [
@@ -54,6 +56,67 @@ export const CREATORS: Creator[] = [
   { id: "creator_zara", name: "Wanjiru", gender: "female", age: 29, specialty: "Luxe & élégance", languages: ["Anglais", "Swahili"], country: "Kenya", featured: false,
     bio: "Finition éditoriale, révélations lentes et cadrages élégants.",
     look: "Wanjiru, 29-year-old Kenyan woman, rich brown skin, long elegant neck, sharp cheekbones, sleek low bun with a middle part, minimal gold jewelry, wearing a champagne satin slip dress with a cream tailored blazer" },
+  // Nouveaux créateurs (portrait + fiche, pas encore de vidéo de présentation).
+  { id: "creator_coumba", name: "Coumba", gender: "female", age: 26, specialty: "Mariage & cérémonies", languages: ["Français", "Wolof"], country: "Sénégal", featured: false, intro: false,
+    bio: "Tenues de cérémonie, baptêmes et mariages : élégance et émotion.",
+    look: "Coumba, 26-year-old Senegalese woman, dark ebony skin, elegant oval face with defined cheekbones, warm genuine smile, waist-length goddess locs (bohemian locs with soft curly ends) swept over one shoulder with thin gold cuffs, gold drop earrings, wearing a champagne-gold lace tailored midi dress with a high neckline and delicate embroidery, gold strappy heels" },
+  { id: "creator_nadege", name: "Nadège", gender: "female", age: 27, specialty: "Sport & fitness", languages: ["Français", "Anglais"], country: "Cameroun", featured: false, intro: false,
+    bio: "Routines sport, compléments et tenues de training, énergie à fond.",
+    look: "Nadège, 27-year-old Cameroonian woman, medium-deep brown skin, athletic toned build, defined jawline, bright confident smile, sleek high braided ponytail (one long braid down her back) with laid edges, small gold stud earrings, wearing a lilac zip-up training jacket with a white stripe, matching lilac leggings and white sneakers" },
+  { id: "creator_binta", name: "Binta", gender: "female", age: 25, specialty: "Bijoux & accessoires", languages: ["Français", "Peul"], country: "Guinée", featured: false, intro: false,
+    bio: "Bijoux, sacs et accessoires en gros plan, avec beaucoup de style.",
+    look: "Binta, 25-year-old Guinean woman, deep dark-brown skin, heart-shaped face with high cheekbones, playful closed-lip smile, short tapered natural coils dyed honey blonde, oversized gold hoop earrings and layered gold chain necklaces, bold berry lipstick, wearing a fuchsia-pink satin puff-sleeve blouse tucked into high-waisted black wide-leg trousers, gold strappy sandals" },
+  { id: "creator_ange", name: "Ange", gender: "female", age: 23, specialty: "Ongles & beauté des mains", languages: ["Français", "Dioula"], country: "Côte d'Ivoire", featured: false, intro: false,
+    bio: "Nail art, soins des mains et unboxings girly, très gros plans.",
+    look: "Ange, 23-year-old Ivorian woman, warm medium-brown skin, soft oval face, sweet open smile, long silky jet-black straight hair with a middle part falling past her chest, small gold huggie earrings, long almond nails in glossy baby pink, soft glam makeup with glossy pink lips, wearing a baby-pink ribbed knit sweater with a matching baby-pink knit midi skirt and white sneakers" },
+  { id: "creator_rokhaya", name: "Rokhaya", gender: "female", age: 31, specialty: "Maternité & bébé", languages: ["Français", "Wolof"], country: "Sénégal", featured: false, intro: false,
+    bio: "Produits bébé et maman testés à la maison, conseils de grande sœur.",
+    look: "Rokhaya, 31-year-old Senegalese woman, dark brown skin, serene round-oval face, gentle motherly smile, traditional Fulani braids with a center braid, long braids decorated with small amber beads, cowrie shells and silver rings, small silver earrings, wearing a flowing full-length white cotton boubou with rich gold embroidery at the neckline, white trousers and gold flat sandals" },
+  { id: "creator_esther", name: "Esther", gender: "female", age: 24, specialty: "Musique & danse", languages: ["Français", "Lingala"], country: "RD Congo", featured: false, intro: false,
+    bio: "Danse, sons du moment et transitions rythmées, le produit dans le flow.",
+    look: "Esther, 24-year-old Congolese woman from Kinshasa, rich dark-brown skin, expressive lively face with defined cheekbones, big joyful laughing smile, large voluminous round natural afro with a wide orange satin headband, chunky gold hoop earrings, wearing a bright orange ribbed crop top under an open blue-orange-yellow wax-print shirt, high-waisted wide-leg trousers in the same wax print and white sneakers" },
+  { id: "creator_laetitia", name: "Laetitia", gender: "female", age: 29, specialty: "Parfums & senteurs", languages: ["Français"], country: "Gabon", featured: false, intro: false,
+    bio: "Parfums, encens et huiles : révélations lentes et ambiance sensuelle.",
+    look: "Laetitia, 29-year-old Gabonese woman, deep brown skin with cool undertones, elegant long face with sculpted cheekbones, soft sophisticated half-smile, chin-length bouncy curly bob with glossy defined ringlets and a deep side part, pearl drop earrings, thin gold chain, dark berry lipstick and subtle smoky eyes, wearing a burgundy silk slip midi dress with nude strappy heels" },
+  { id: "creator_sali", name: "Sali", gender: "female", age: 32, specialty: "Déco & intérieur", languages: ["Français", "Mooré"], country: "Burkina Faso", featured: false, intro: false,
+    bio: "Déco, meubles et objets artisanaux mis en scène dans un intérieur chaleureux.",
+    look: "Sali, 32-year-old Burkinabè woman, dark brown skin, calm oval face with mature features, warm relaxed smile, neat straight-back cornrows woven with thin gold thread gathered into a low chignon bun, small round wooden earrings, a stack of carved wooden bangles on one wrist, natural minimal makeup, wearing a terracotta-orange linen jumpsuit with a wide collar and tan leather flat sandals" },
+  { id: "creator_maimouna", name: "Maïmouna", gender: "female", age: 28, specialty: "Voyage & découverte", languages: ["Français", "Bambara"], country: "Mali", featured: false, intro: false,
+    bio: "Vlogs de voyage, hôtels, transport et bons plans à travers l'Afrique.",
+    look: "Maïmouna, 28-year-old Malian woman, medium-dark brown skin, oval face with high cheekbones, adventurous bright smile, two long jumbo feed-in braids falling over both shoulders down to her waist, small gold hoop earrings, light natural makeup, wearing a knee-length belted khaki safari shirt dress with rolled sleeves, a colorful bogolan-pattern scarf loosely tied around her neck and brown leather ankle boots" },
+  { id: "creator_princesse", name: "Princesse", gender: "female", age: 22, specialty: "Sneakers & streetwear", languages: ["Français", "Éwé"], country: "Togo", featured: false, intro: false,
+    bio: "Sneakers, streetwear et looks du jour, ton cool et direct.",
+    look: "Princesse, 22-year-old Togolese woman, dark brown skin, defined cheekbones and a pointed chin, cool confident smirk, long passion twists dyed copper-ginger falling past her shoulders with a few gold cuffs, gold nameplate necklace and small gold hoops, wearing an oversized cropped light-wash denim jacket over a white ribbed tank top, beige cargo pants and chunky white sneakers" },
+  { id: "creator_serge", name: "Serge", gender: "male", age: 33, specialty: "Auto & moto", languages: ["Français", "Anglais"], country: "Cameroun", featured: false, intro: false,
+    bio: "Motos, voitures et accessoires testés sur la route, ton franc.",
+    look: "Serge, 33-year-old Cameroonian man, dark brown skin, strong square jaw, broad shoulders, confident easy smile, short 360 waves haircut with a sharp line-up, full well-groomed short beard, steel chain-link bracelet, wearing a black leather biker jacket over a charcoal crew-neck t-shirt, dark jeans and black leather boots" },
+  { id: "creator_abdoulaye", name: "Abdoulaye", gender: "male", age: 28, specialty: "Barbier & soins homme", languages: ["Français", "Wolof"], country: "Sénégal", featured: false, intro: false,
+    bio: "Coupes, barbe, tondeuses et soins pour hommes, démos au salon.",
+    look: "Abdoulaye, 28-year-old Senegalese man, very dark ebony skin, sculpted cheekbones and a defined jaw, calm charming smile, high-top fade with a crisp razor part and sharp line-up, thin beard outlining the jaw, small silver stud earring, wearing a crisp white short-sleeve barber tunic over a black t-shirt, black trousers and black sneakers" },
+  { id: "creator_kwame", name: "Kwame", gender: "male", age: 30, specialty: "Mode homme", languages: ["Anglais", "Twi"], country: "Ghana", featured: false, intro: false,
+    bio: "Costumes, chemises et chaussures pour hommes, looks soignés.",
+    look: "Kwame, 30-year-old Ghanaian man, deep brown skin, elegant long face with high cheekbones, refined subtle smile, short neat twists on top with tapered sides, clean-shaven, thin gold-rim round glasses, wearing a tailored mustard-yellow double-breasted blazer over a black turtleneck with a kente-pattern pocket square, slim black trousers and brown leather loafers" },
+  { id: "creator_ousmane", name: "Ousmane", gender: "male", age: 38, specialty: "Agriculture & élevage", languages: ["Français", "Peul"], country: "Guinée", featured: false, intro: false,
+    bio: "Semences, engrais, outils et élevage expliqués au champ, sans détour.",
+    look: "Ousmane, 38-year-old Guinean man, dark brown sun-kissed skin, weathered strong face with smile lines, warm proud grin, short cropped hair, salt-and-pepper short beard, wearing a woven straw hat tilted back, a faded denim work shirt with rolled sleeves over a white undershirt, khaki work trousers and brown rubber boots" },
+  { id: "creator_patrick", name: "Patrick", gender: "male", age: 35, specialty: "Électroménager", languages: ["Français", "Dioula"], country: "Côte d'Ivoire", featured: false, intro: false,
+    bio: "Frigos, ventilos, mixeurs : démonstrations claires et conseils d'achat.",
+    look: "Patrick, 35-year-old Ivorian man, medium-dark brown skin, round friendly face, reassuring wide smile, low-cut short hair, neat moustache, silver wristwatch, wearing a light-blue button-down oxford shirt with rolled sleeves under a navy knit vest, beige chinos and brown leather shoes" },
+  { id: "creator_junior", name: "Junior", gender: "male", age: 24, specialty: "Football", languages: ["Français", "Lingala"], country: "RD Congo", featured: false, intro: false,
+    bio: "Maillots, crampons et soirées match entre potes, toute l'ambiance du foot.",
+    look: "Junior, 24-year-old Congolese man from Kinshasa, rich dark-brown skin, athletic lean build, defined jaw, big energetic smile, short bleached-blonde curly top with a low fade, clean-shaven, black wrist sweatband, wearing a blue and red striped football jersey without logos, black football shorts, white socks and black football boots" },
+  { id: "creator_idrissa", name: "Idrissa", gender: "male", age: 41, specialty: "Bricolage & outils", languages: ["Français", "Haoussa"], country: "Niger", featured: false, intro: false,
+    bio: "Outils, quincaillerie et réparations à la maison, gestes précis.",
+    look: "Idrissa, 41-year-old Nigerien man, dark brown skin, sturdy build, strong mature face, calm capable smile, closely shaved head, thick black moustache and short goatee, carpenter pencil behind his ear, wearing a rust-orange canvas work jacket over a grey henley shirt, dark work trousers and tan work boots" },
+  { id: "creator_desire", name: "Désiré", gender: "male", age: 32, specialty: "Finance & Mobile Money", languages: ["Français", "Fon"], country: "Bénin", featured: false, intro: false,
+    bio: "Applis, épargne, assurance et Mobile Money expliqués simplement.",
+    look: "Désiré, 32-year-old Beninese man, medium brown skin, oval face with a defined jaw, trustworthy confident smile, neat short afro tapered on the sides, trimmed short beard, thin black rectangular glasses, wearing a slim-fit navy suit with a white open-collar shirt and no tie, brown leather shoes" },
+  { id: "creator_hamidou", name: "Hamidou", gender: "male", age: 29, specialty: "Street food & grillades", languages: ["Français", "Mooré"], country: "Burkina Faso", featured: false, intro: false,
+    bio: "Brochettes, grillades et maquis : il goûte, il rit, ça donne faim.",
+    look: "Hamidou, 29-year-old Burkinabè man, dark brown skin, warm round-oval face, huge hearty laugh, short starter locs under a red bandana headwrap, short scruffy beard, wearing a black chef apron over a white t-shirt with a white kitchen towel over one shoulder, black trousers and black sneakers" },
+  { id: "creator_thierry", name: "Thierry", gender: "male", age: 27, specialty: "Solaire & électricité", languages: ["Français", "Éwé"], country: "Togo", featured: false, intro: false,
+    bio: "Panneaux solaires, batteries et installations électriques, tests concrets.",
+    look: "Thierry, 27-year-old Togolese man, medium-dark brown skin, slim build, sharp angular face, curious bright smile, neat coily high-top with a temple fade, light stubble, wearing a high-visibility yellow safety vest over a navy polo shirt, grey cargo work trousers and black safety boots, white hard hat in hand" },
 ]
 
 export const creatorFiles = (id: string) => ({
