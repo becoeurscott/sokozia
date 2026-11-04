@@ -55,7 +55,7 @@ export default function RenderStudio({ models, directors, avatars, balance: init
     if (!model.aspects.includes(aspect)) setAspect(model.aspects[0]);
   }, [model, duration, aspect]);
 
-  // Prix de chaque durée pour ce modèle + format (coût réel du modèle + 40 %).
+  // Prix de chaque durée pour ce modèle + format (coût réel du modèle × la marge, réglée dans settings.margin).
   useEffect(() => {
     if (!model) return;
     let live = true;

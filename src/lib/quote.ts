@@ -2,7 +2,7 @@ import { hfEstimate } from "./higgsfield";
 import { loadPricing, type Pricing, type PricedStyle } from "./pricing";
 import { DIRECTORS, type DirectorId } from "./director";
 
-// Prix à l'usage : coût réel Higgsfield (estimation en direct si dispo, sinon coût/s enregistré) × marge (1,4 = +40 %).
+// Prix à l'usage : coût réel Higgsfield (estimation en direct si dispo, sinon coût/s enregistré) × marge (settings.margin, ex. 2 = prix doublé).
 const cache = new Map<string, { usd: number; at: number }>();
 
 export async function costUsd(style: PricedStyle, duration: number, aspect: string) {
