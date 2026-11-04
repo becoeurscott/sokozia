@@ -119,7 +119,7 @@ export default async function Home() {
 
       {/* Styles */}
       <section className="mx-auto max-w-6xl px-4 py-20">
-        <h2 className="text-center text-3xl font-extrabold sm:text-4xl">4 modèles, selon ton budget</h2>
+        <h2 className="text-center text-3xl font-extrabold sm:text-4xl">{pricing.styles.length} modèles, selon ton budget</h2>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {pricing.styles.map((s, i) => (
             <div key={s.id} className={`card flex flex-col ${i === 1 ? "!border-brand" : ""}`}>
