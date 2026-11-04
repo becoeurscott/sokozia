@@ -33,7 +33,7 @@ export function PillBars({ data, unit = "", height = 260, secondaryLabel, primar
                 <div className="absolute bottom-0 w-[70%] max-w-3 rounded-full bg-white/25 transition-all" style={{ height: `${(d.secondary / top) * 100}%` }} />
               )}
               <div
-                className={`relative w-[70%] max-w-3 rounded-full transition-all ${hover === i ? "bg-[#f08a3c]" : "bg-white"}`}
+                className={`relative w-[70%] max-w-3 rounded-full transition-all ${hover === i ? "bg-[#f08a9c]" : "bg-white"}`}
                 style={{ height: `${Math.max(d.value > 0 ? 3 : 0, (d.value / top) * 100)}%` }}
               />
               {hover === i && (
@@ -70,7 +70,7 @@ export function MiniBlocks({ values, color }: { values: number[]; color: string 
 }
 
 /** Progress ring (savings-goal style). */
-export function Ring({ pct, color = "#f08a3c", size = 44 }: { pct: number; color?: string; size?: number }) {
+export function Ring({ pct, color = "#f08a9c", size = 44 }: { pct: number; color?: string; size?: number }) {
   const r = (size - 6) / 2;
   const c = 2 * Math.PI * r;
   const p = Math.max(0, Math.min(100, pct));
@@ -95,7 +95,7 @@ export function ShareBars({ items, unit = "" }: { items: { label: string; value:
             <span className="font-medium tabular-nums">{fmt(i.value)}{unit}{i.hint && <span className="text-white/45 font-normal"> · {i.hint}</span>}</span>
           </div>
           <div className="mt-1.5 h-2 rounded-full bg-white/[0.05] overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${(i.value / total) * 100}%`, background: i.color ?? "#f08a3c" }} />
+            <div className="h-full rounded-full" style={{ width: `${(i.value / total) * 100}%`, background: i.color ?? "#f08a9c" }} />
           </div>
         </div>
       ))}

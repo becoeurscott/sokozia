@@ -49,13 +49,13 @@ export function RenderLoading({ image, aspect, etaSec, startedAt, note, hook }: 
         .rl-img{filter:blur(14px) saturate(1.2) brightness(.7);transform:scale(1.15);animation:rl-focus 8s ease-in-out infinite alternate}
         @keyframes rl-focus{to{filter:blur(6px) saturate(1.3) brightness(.85);transform:scale(1.05)}}
         .rl-grid{background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);background-size:28px 28px;mask-image:radial-gradient(circle at 50% 45%,black,transparent 75%)}
-        .rl-sweep{background:linear-gradient(180deg,transparent 0%,rgba(232,89,12,.0) 40%,rgba(255,170,90,.45) 50%,rgba(232,89,12,0) 60%,transparent 100%);background-size:100% 250%;animation:rl-scan 2.6s cubic-bezier(.45,0,.55,1) infinite;mix-blend-mode:screen}
+        .rl-sweep{background:linear-gradient(180deg,transparent 0%,rgba(109,7,26,.0) 40%,rgba(255,170,90,.45) 50%,rgba(109,7,26,0) 60%,transparent 100%);background-size:100% 250%;animation:rl-scan 2.6s cubic-bezier(.45,0,.55,1) infinite;mix-blend-mode:screen}
         @keyframes rl-scan{from{background-position:0 120%}to{background-position:0 -20%}}
         .rl-rec{animation:rl-blink 1s steps(2) infinite}@keyframes rl-blink{50%{opacity:.2}}
-        .rl-bar{background-image:linear-gradient(90deg,#e8590c,#ffb070,#e8590c);background-size:200% 100%;animation:rl-flow 1.4s linear infinite}
+        .rl-bar{background-image:linear-gradient(90deg,#6d071a,#f08a9c,#6d071a);background-size:200% 100%;animation:rl-flow 1.4s linear infinite}
         @keyframes rl-flow{to{background-position:-200% 0}}
         .rl-in{animation:rl-up .4s ease-out}@keyframes rl-up{from{opacity:0;transform:translateY(6px)}}
-        .rl-frame{box-shadow:0 30px 80px -30px rgba(232,89,12,.55)}
+        .rl-frame{box-shadow:0 30px 80px -30px rgba(109,7,26,.55)}
         @media (prefers-reduced-motion:reduce){.rl-img,.rl-sweep,.rl-bar,.rl-rec{animation:none}}
       `}</style>
     </div>

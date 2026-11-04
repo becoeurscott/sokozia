@@ -58,7 +58,7 @@ export function KpiCard({ icon, title, value, sub, footer, graphic }: { icon: Re
 }
 
 const TONES: Record<string, string> = {
-  green: "bg-emerald-500/15 text-emerald-400", red: "bg-red-500/15 text-red-400", orange: "bg-[#f08a3c]/15 text-[#f08a3c]",
+  green: "bg-emerald-500/15 text-emerald-400", red: "bg-red-500/15 text-red-400", orange: "bg-[#f08a9c]/15 text-[#f08a9c]",
   yellow: "bg-amber-400/15 text-amber-300", gray: "bg-white/[0.07] text-white/70", blue: "bg-sky-500/15 text-sky-400",
 };
 export function Badge({ tone = "gray", children }: { tone?: keyof typeof TONES | string; children: ReactNode }) {

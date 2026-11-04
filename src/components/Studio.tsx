@@ -20,7 +20,7 @@ const ORDER = ["product", "creator", "format", "location", "style", "preview", "
 const SUGGESTIONS = ["Je vends une huile de karité", "Mon restaurant à Abidjan", "Ma boutique de perruques", "Des téléphones neufs"];
 
 function Orb({ size = 56 }: { size?: number }) {
-  return <div style={{ width: size, height: size }} className="shrink-0 rounded-full bg-[radial-gradient(circle_at_30%_30%,#ffd8b0,#f08a3c_45%,#c2410c_80%)] shadow-[0_8px_30px_-6px_rgba(232,89,12,0.55)]" />;
+  return <div style={{ width: size, height: size }} className="shrink-0 rounded-full bg-[radial-gradient(circle_at_30%_30%,#ffd8b0,#f08a9c_45%,#c2410c_80%)] shadow-[0_8px_30px_-6px_rgba(109,7,26,0.55)]" />;
 }
 
 function groupLabel(iso: string) {

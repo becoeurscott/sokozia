@@ -22,7 +22,7 @@ export function AdminSignIn() {
         <input name="email" type="email" required autoComplete="email" placeholder="E-mail administrateur" className={input} />
         <input name="password" type="password" required autoComplete="current-password" placeholder="Mot de passe" className={input} />
         {state?.error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[12px] text-red-400">{state.error}</p>}
-        <button disabled={pending} className="h-11 w-full rounded-xl bg-[#f08a3c] text-[14px] font-semibold text-black disabled:opacity-50">{pending ? "Connexion…" : "Se connecter"}</button>
+        <button disabled={pending} className="h-11 w-full rounded-xl bg-[#f08a9c] text-[14px] font-semibold text-black disabled:opacity-50">{pending ? "Connexion…" : "Se connecter"}</button>
       </form>
     </div>
   );

@@ -41,7 +41,7 @@ export default async function Home() {
             <span className="sm:hidden">Mobile Money ou carte</span><span className="hidden sm:inline">Orange Money · MTN MoMo · Moov · Wave · Carte bancaire</span>
           </p>
           <h1 className="mx-auto mt-5 max-w-4xl text-[2.1rem] font-extrabold leading-[1.1] tracking-tight drop-shadow-[0_2px_20px_rgba(0,0,0,.45)] sm:text-6xl sm:leading-[1.05]">
-            Des pubs vidéo avec des <span className="relative whitespace-nowrap text-brand">visages africains<svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" preserveAspectRatio="none"><path d="M2 7 Q100 0 198 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" /></svg></span>, pour des vendeurs africains
+            Des pubs vidéo avec des <span className="relative whitespace-nowrap text-brand-bright">visages africains<svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" preserveAspectRatio="none"><path d="M2 7 Q100 0 198 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" /></svg></span>, pour des vendeurs africains
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-white/85">
             Pas d&apos;acteur, pas de caméra, pas de montage. Ajoute la photo de ton produit, Claude réalise la pub et on crée la vidéo pour TikTok, WhatsApp et Facebook.
@@ -110,7 +110,7 @@ export default async function Home() {
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {uses.map(([Icon, t, d]) => (
               <div key={t} className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/20 text-brand"><Icon size={22} strokeWidth={1.8} /></span><p className="mt-2 text-lg font-bold">{t}</p><p className="text-white/70">{d}</p>
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-bright/15 text-brand-bright"><Icon size={22} strokeWidth={1.8} /></span><p className="mt-2 text-lg font-bold">{t}</p><p className="text-white/70">{d}</p>
               </div>
             ))}
           </div>

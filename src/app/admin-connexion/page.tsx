@@ -12,10 +12,10 @@ export default async function AdminLogin() {
     <main className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-black px-5 text-white">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex items-center justify-center gap-2.5">
-          <span className="grid size-10 place-items-center rounded-xl bg-[#f08a3c] text-lg font-black text-black">S</span>
+          <span className="grid size-10 place-items-center rounded-xl bg-[#f08a9c] text-lg font-black text-black">S</span>
           <span className="leading-tight">
             <span className="block font-semibold">Sokozia</span>
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#f08a3c]">Administration</span>
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#f08a9c]">Administration</span>
           </span>
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-[#121212] p-5">

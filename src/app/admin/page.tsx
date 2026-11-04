@@ -68,7 +68,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
         <KpiCard icon={<Wallet />} title="Budget Higgsfield restant" value={budget.configured ? fmtUsd(budget.leftUsd) : "À configurer"}
           sub={budget.configured ? `${fmtUsd(budget.spentUsd)} dépensés sur ${fmtUsd(budget.budgetUsd)}` : "Renseigne le montant rechargé"}
           graphic={budget.configured ? <Ring pct={100 - budget.usedPct} color={budget.low ? "#ef4444" : "#22c55e"} /> : undefined}
-          footer={<><span>Depuis le {fmtDate(o.budget.hfBudgetSince)}</span><Link href="/admin/higgsfield" className="text-[#f08a3c] hover:underline">Modifier</Link></>} />
+          footer={<><span>Depuis le {fmtDate(o.budget.hfBudgetSince)}</span><Link href="/admin/higgsfield" className="text-[#f08a9c] hover:underline">Modifier</Link></>} />
       </div>
 
       <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
@@ -105,13 +105,13 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
         </Card>
 
         <Card className="relative flex flex-col overflow-hidden">
-          <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-[#f08a3c]/20 blur-3xl" />
+          <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-[#f08a9c]/20 blur-3xl" />
           <CardHeader icon={<AlertTriangle />} title="Alertes" />
           <ul className="relative flex-1 space-y-3">
             {alerts.map((a, i) => {
               const body = (
                 <span className="flex items-start gap-3">
-                  <span className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg ${a.tone === "red" ? "bg-red-500/15 text-red-400" : a.tone === "orange" ? "bg-[#f08a3c]/15 text-[#f08a3c]" : "bg-emerald-500/15 text-emerald-400"}`}>
+                  <span className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg ${a.tone === "red" ? "bg-red-500/15 text-red-400" : a.tone === "orange" ? "bg-[#f08a9c]/15 text-[#f08a9c]" : "bg-emerald-500/15 text-emerald-400"}`}>
                     {a.tone === "green" ? <CheckCircle2 className="size-3.5" /> : <AlertTriangle className="size-3.5" />}
                   </span>
                   <span className="text-[13px] leading-snug text-white/70 [&_b]:text-white">{a.text}</span>
@@ -120,7 +120,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
               return <li key={i}>{a.href ? <Link href={a.href} className="block rounded-lg hover:bg-white/[0.03]">{body}</Link> : body}</li>;
             })}
           </ul>
-          <Link href="/admin/higgsfield" className="relative mt-4 flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#f08a3c] to-[#ef4444] text-[13px] font-medium text-white hover:opacity-90">
+          <Link href="/admin/higgsfield" className="relative mt-4 flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#f08a9c] to-[#ef4444] text-[13px] font-medium text-white hover:opacity-90">
             <Wallet className="size-4" /> Mettre à jour le budget Higgsfield
           </Link>
         </Card>
