@@ -49,3 +49,6 @@ body { background: var(--bg); color: var(--ink); }
   .admin-root tbody td:empty { display: none; }
   .admin-root .overflow-x-auto { overflow-x: visible; }
 }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

@@ -199,15 +199,15 @@ export default function RenderStudio({ models, directors, avatars, balance: init
                   placeholder="Facultatif : ce que tu veux mettre en avant (prix, promo, langue…). Sinon Claude décide de tout."
                   className="block min-h-12 w-full resize-none bg-transparent text-[16px] leading-6 outline-none placeholder:text-muted/70" />
                 <input ref={file} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files)} />
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                  <div className="-ml-1 flex min-w-0 flex-wrap items-center gap-0.5">
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="no-scrollbar -mx-1 flex min-w-0 items-center gap-0.5 overflow-x-auto px-1 pr-6 [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:flex-wrap sm:overflow-visible sm:pr-1 sm:[mask-image:none]">
                     <button type="button" onClick={() => file.current?.click()} title="Ajouter la photo du produit" aria-label="Ajouter la photo du produit"
                       className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium hover:bg-[#f6ebdc] ${image ? "text-ink/75" : "text-brand"}`}>
                       {uploading ? <Loader2 size={18} className="animate-spin" /> : <ImagePlus size={18} />}<span className="hidden sm:inline">{image ? "Changer" : "Photo produit"}</span>
                     </button>
                     <AvatarPick value={creator} avatars={avatars} onChange={setCreator} />
                     <Pick title="Directeur de la pub" icon={<Clapperboard size={16} />} value={director} onChange={setDirector}
-                      options={directors.map((d) => ({ value: d.id, label: d.name, hint: d.hint }))} />
+                      options={directors.map((d) => ({ value: d.id, label: d.name, short: d.name.replace("Claude ", ""), hint: d.hint }))} />
                     <Pick title="Modèle" icon={<Sparkles size={16} />} value={modelId} onChange={setModelId}
                       options={models.map((m) => ({ value: m.id, label: m.name, hint: m.quality }))} />
                     <Pick title="Durée" icon={<Clock size={16} />} value={String(duration)} onChange={(v) => setDuration(Number(v))}
@@ -215,7 +215,7 @@ export default function RenderStudio({ models, directors, avatars, balance: init
                     <Pick title="Format" icon={<RectangleVertical size={16} />} value={aspect} onChange={setAspect}
                       options={(model?.aspects ?? []).map((a) => ({ value: a, label: a, hint: ASPECTS[a] }))} />
                   </div>
-                  <button onClick={generate} disabled={!ready} className="ml-auto flex h-10 shrink-0 items-center gap-2 rounded-full bg-brand pl-4 pr-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:bg-brand/40">
+                  <button onClick={generate} disabled={!ready} className="flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-brand pl-4 pr-3 sm:ml-auto sm:h-10 sm:w-auto text-sm font-semibold text-white transition hover:brightness-110 disabled:bg-brand/40">
                     {busy ? <Loader2 size={15} className="animate-spin" /> : null}
                     {missing > 0 ? "Recharger" : "Générer"}{price ? ` · ${nf(price)}` : ""} <ArrowUp size={15} />
                   </button>
