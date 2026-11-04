@@ -34,5 +34,9 @@ export async function quote(styleId: string, duration: number, aspect: string, c
   // Coût réel = vidéo (Higgsfield) + réalisation par Claude (directeur choisi).
   // + image d'ouverture avec le créateur (fiche + produit) quand un visage apparaît.
   const usd = (await costUsd(style, duration, aspect)) + DIRECTORS[director].usd + (withCreator ? p.imageCostUsd : 0);
-  return { style, usd, price: priceFromCost(p, usd, currency) };
+  // Prix fixe en FCFA (tout compris) s'il est défini pour cette durée ; sinon coût réel × marge.
+  const fixed = Number(style.fixed_prices?.[String(duration)]);
+  const fcfa = currency === "XOF" || currency === "XAF";
+  const price = fixed > 0 ? (fcfa ? fixed : Math.ceil(fixed / (p.fx.XOF ?? 600) * (p.fx[currency] ?? 1))) : priceFromCost(p, usd, currency);
+  return { style, usd, price };
 }
