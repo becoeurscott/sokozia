@@ -62,10 +62,43 @@ export const CHARACTER_SHEET_TEMPLATE = `A three-panel character reference sheet
 // Cerveau d'Awa : uniquement Claude (via OpenRouter). Le client choisit le directeur ; en cas d'échec
 // on repasse sur un autre Claude, jamais sur un autre fournisseur.
 export const DIRECTORS = {
-  haiku: { model: "anthropic/claude-haiku-5.5", name: "Claude Haiku", hint: "Rapide et simple", usd: 0.002 },
-  sonnet: { model: "anthropic/claude-sonnet-5.5", name: "Claude Sonnet", hint: "Équilibré, le plus choisi", usd: 0.02 },
-  opus: { model: "anthropic/claude-opus-5.5", name: "Claude Opus", hint: "Le plus créatif et le plus précis", usd: 0.04 },
+  haiku: {
+    model: "anthropic/claude-haiku-5.5", name: "Claude Haiku", hint: "Direct & efficace · pubs qui vont droit au but", usd: 0.002,
+    signature: "Direct & efficace",
+    art: `TA DIRECTION ARTISTIQUE : « Direct & efficace ». Tu fais des pubs courtes et percutantes qu'on peut publier tous les jours.
+- Le produit est montré dès la première seconde, plein cadre, puis le créateur le présente.
+- Une seule idée : LE bénéfice principal, dit simplement, et le prix ou la promo dit à voix haute s'il est connu.
+- Phrases très courtes, ton de vendeur sympa du quartier, aucune fioriture.
+- Fin : appel clair « Écris-moi sur WhatsApp » / « Passe à la boutique ».`,
+  },
+  sonnet: {
+    model: "anthropic/claude-sonnet-5.5", name: "Claude Sonnet", hint: "Storyteller UGC · une vraie cliente raconte", usd: 0.02,
+    signature: "Storyteller UGC",
+    art: `TA DIRECTION ARTISTIQUE : « Storyteller UGC ». Tu racontes une mini-histoire vraie, comme une cliente qui parle à une amie.
+- Structure en 3 temps : le problème du quotidien (reconnaissable par tous) → la découverte du produit → le résultat, montré à l'écran.
+- Ton intime et sincère, regard caméra, petits détails de vie qui rendent crédible (« depuis que j'ai ça… »).
+- Émotion avant argument : soulagement, fierté, joie.
+- Fin : une phrase qui pousse à demander le lien ou à taguer une amie.`,
+  },
+  opus: {
+    model: "anthropic/claude-opus-5.5", name: "Claude Opus", hint: "Créatif viral · idées audacieuses à partager", usd: 0.04,
+    signature: "Créatif viral",
+    art: `TA DIRECTION ARTISTIQUE : « Créatif viral ». Tu cherches l'idée que les gens partagent et regardent deux fois.
+- Choisis UN concept fort : retournement de situation, mini sketch drôle, réaction exagérée, avant/après spectaculaire, défi, ou détournement d'une tendance TikTok.
+- Interruption visuelle dans les 2 premières secondes (geste inattendu, objet qui surgit, phrase choc, gros plan surprenant).
+- Humour et codes africains assumés (expressions du quotidien, situations que tout le monde reconnaît), sans jamais se moquer du client.
+- Fin en boucle ou en chute qui donne envie de commenter ou de revoir.`,
+  },
 } as const;
+
+// Règles communes à tous les directeurs pour une pub qui marche sur TikTok, Reels et WhatsApp.
+const VIRAL = `RÈGLES VIRALES (obligatoires) :
+- ACCROCHE dans les 2 premières secondes : rien de lent, pas de présentation, on entre directement dans l'action.
+- Un seul message, un seul bénéfice clair ; rythme rapide, chaque seconde sert.
+- Le produit reste lisible et reconnaissable (étiquette visible) au moins une fois en gros plan.
+- Ancrage africain réel : lieux, gestes, expressions et humour du quotidien (Abidjan, Dakar, Douala, Kinshasa…).
+- La réplique sonne naturelle à l'oral, jamais comme une pub récitée ; adaptée à la durée (environ 2 à 3 mots par seconde).
+- Une fin qui déclenche une action : commenter, partager, écrire sur WhatsApp, revoir.`;
 export type DirectorId = keyof typeof DIRECTORS;
 export const isDirector = (d: unknown): d is DirectorId => typeof d === "string" && d in DIRECTORS;
 const DIRECTOR = DIRECTORS.sonnet.model;
@@ -307,13 +340,16 @@ export async function directAd(o: {
     : `Choisis le créateur le plus crédible pour ce produit et cette cible parmi :\n${castList}`;
   const fallbackCreator = fixed ?? (o.creator === "auto" ? o.cast[0] : null);
   const fallback = {
-    style: "Démonstration", creatorId: fallbackCreator?.id ?? null,
+    style: "Démonstration", hook: null as string | null, creatorId: fallbackCreator?.id ?? null,
     prompt: `Authentic UGC-style ad filmed on a phone. ${fallbackCreator ? `${fallbackCreator.name} presents` : "Hands present"} the exact product from the reference image: keep its shape, colors, label and logo identical. ${o.request || "Show its main benefit"}. Natural light, real African setting, handheld camera, ${o.duration} seconds, ${o.aspect}.`,
     framePrompt: fallbackCreator ? `Photorealistic smartphone photo, ${o.aspect} frame. The person from @Image1 holds the exact product from @Image2 near their face, smiling at the camera, in a real African home or shop. Keep the person's face, skin, hair and outfit identical to @Image1 and the product identical to @Image2. Natural daylight.` : null as string | null,
   };
   try {
     const r = await Promise.race([
-      askJSON<{ style: string; creatorId?: string | null; prompt: string; framePrompt?: string | null }>(`Tu es le réalisateur de cette pub vidéo. L'image jointe est la PHOTO DU PRODUIT.
+      askJSON<{ style: string; hook?: string; creatorId?: string | null; prompt: string; framePrompt?: string | null }>(`Tu es le réalisateur de cette pub vidéo. L'image jointe est la PHOTO DU PRODUIT.
+${DIRECTORS[o.director].art}
+${VIRAL}
+
 1. Regarde le produit (type, couleurs, étiquette, texte lisible, gamme de prix probable) et déduis à qui il se vend.
 2. ${o.request ? `Le client demande : « ${o.request} ». Respecte sa demande, complète ce qui manque.` : "Le client n'a rien précisé : décide toi-même de tout."}
 3. CRÉATEUR : ${who}
@@ -323,13 +359,14 @@ ${styles}
 6. Écris "prompt" EN ANGLAIS (70 à 130 mots) pour la vidéo de ${o.duration} secondes au format ${o.aspect}. ${o.creator ? "La vidéo part de cette première image : décris surtout le mouvement, les gestes, l'expression et la parole." : "La vidéo part de la photo du produit."} Adapté au modèle :
 ${modelGuide(o.endpoint)}
 Règles : produit strictement identique (forme, couleurs, étiquette, logo). Style UGC authentique filmé au téléphone. Personnes et lieux africains, crédibles. ${o.creator ? "Une réplique courte et naturelle entre guillemets dans la langue du créateur (français par défaut), adaptée à la durée." : "Pas de visage."} Pas de texte incrusté à l'écran.
-Réponds en JSON : {"style": "nom du style en français", "creatorId": ${o.creator ? '"id du créateur"' : "null"}, "framePrompt": ${o.creator ? '"..."' : "null"}, "prompt": "..."}`, { model: DIRECTORS[o.director].model, image: o.image }),
+Décris aussi ton accroche (les 2 premières secondes) en une phrase courte en français, pour le client.
+Réponds en JSON : {"style": "nom du style en français", "hook": "accroche en une phrase", "creatorId": ${o.creator ? '"id du créateur"' : "null"}, "framePrompt": ${o.creator ? '"..."' : "null"}, "prompt": "..."}`, { model: DIRECTORS[o.director].model, image: o.image }),
       new Promise<never>((_, no) => setTimeout(() => no(new Error("timeout")), 45000)),
     ]);
     if (!r?.prompt?.trim()) return fallback;
     const creatorId = fixed?.id ?? (o.creator === "auto" ? (o.cast.find((c) => c.id === r.creatorId)?.id ?? fallback.creatorId) : null);
     return {
-      style: r.style?.trim() || fallback.style, creatorId, prompt: r.prompt.trim(),
+      style: r.style?.trim() || fallback.style, hook: r.hook?.trim() || null, creatorId, prompt: r.prompt.trim(),
       framePrompt: o.creator ? (r.framePrompt?.trim() || fallback.framePrompt) : null,
     };
   } catch { return fallback; }

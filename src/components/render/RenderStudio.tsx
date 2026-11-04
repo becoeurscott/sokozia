@@ -42,7 +42,7 @@ export default function RenderStudio({ models, directors, avatars, balance: init
   const [prices, setPrices] = useState<Record<number, number>>({});
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const [job, setJob] = useState<{ id: string | null; image: string; aspect: string; eta: number; startedAt: number; note: string } | null>(null);
+  const [job, setJob] = useState<{ id: string | null; image: string; aspect: string; eta: number; startedAt: number; note: string; hook?: string } | null>(null);
   const [done, setDone] = useState<{ url: string; aspect: string } | null>(null);
   const [topup, setTopup] = useState<{ need?: number } | null>(null);
   const [menu, setMenu] = useState(false);
@@ -100,7 +100,7 @@ export default function RenderStudio({ models, directors, avatars, balance: init
       return setError(r.error ?? "La création n'a pas pu démarrer.");
     }
     if (!isAdmin) setBalance((b) => b - price);
-    setJob((j) => j && { ...j, id: r.videoId, eta: j.eta + (r.creator ? 60 : 0), note: `${r.creator ? `${r.creator} · ` : ""}style « ${r.style} » · par ${r.director}` });
+    setJob((j) => j && { ...j, id: r.videoId, eta: j.eta + (r.creator ? 60 : 0), note: `${r.creator ? `${r.creator} · ` : ""}« ${r.style} » · ${r.director} (${r.signature})`, hook: r.hook ?? undefined });
     setRecent((l) => [{ id: r.videoId, status: "processing", url: null, image, aspect, prompt, created_at: new Date().toISOString() }, ...l]);
   }
 
@@ -169,7 +169,7 @@ export default function RenderStudio({ models, directors, avatars, balance: init
 
         <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-10 sm:pt-[18vh]">
           {job ? (
-            <RenderLoading image={job.image} aspect={job.aspect} etaSec={job.eta} startedAt={job.startedAt} note={job.note} />
+            <RenderLoading image={job.image} aspect={job.aspect} etaSec={job.eta} startedAt={job.startedAt} note={job.note} hook={job.hook} />
           ) : done ? (
             <div className="mx-auto w-full max-w-2xl text-center">
               <video src={done.url} controls autoPlay playsInline className="mx-auto block max-h-[65vh] max-w-full rounded-3xl bg-black shadow-2xl" />

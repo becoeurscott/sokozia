@@ -77,7 +77,7 @@ export async function POST(req: Request) {
       await db.from("videos").update({ apiframe_task_id: jobId, status: "processing", director_prompt: ad.prompt, prompt: label }).eq("id", videoId);
     }
     const creator = CREATORS.find((c) => c.id === ad.creatorId);
-    return NextResponse.json({ videoId, style: ad.style, director: DIRECTORS[director].name, creator: creator?.name ?? null });
+    return NextResponse.json({ videoId, style: ad.style, hook: ad.hook, director: DIRECTORS[director].name, signature: DIRECTORS[director].signature, creator: creator?.name ?? null });
   } catch (e) {
     await db.from("videos").update({ status: "failed", error: String(e).slice(0, 500) }).eq("id", videoId);
     if (!free) await walletApply(user.id, q.price, "refund", `Remboursement · ${label}`, videoId, currency);

@@ -13,7 +13,7 @@ const STAGES = [
 ];
 
 /** Écran de rendu affiché pendant que le modèle crée la vidéo. Progression estimée (jamais 100 % avant la fin). */
-export function RenderLoading({ image, aspect, etaSec, startedAt, note }: { image: string; aspect: string; etaSec: number; startedAt: number; note?: string }) {
+export function RenderLoading({ image, aspect, etaSec, startedAt, note, hook }: { image: string; aspect: string; etaSec: number; startedAt: number; note?: string; hook?: string }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(t); }, []);
   const elapsed = Math.max(0, (now - startedAt) / 1000);
@@ -42,7 +42,8 @@ export function RenderLoading({ image, aspect, etaSec, startedAt, note }: { imag
           <p className="mt-1.5 text-xs text-white/70">{Math.round(pct)} % · environ {Math.max(1, Math.round(etaSec / 60))} min au total</p>
         </div>
       </div>
-      {note && <p className="mx-auto mt-4 w-fit rounded-full border border-line bg-card px-4 py-1.5 text-center text-sm font-semibold">{note}</p>}
+      {note && <p className="mx-auto mt-4 w-fit max-w-full rounded-full border border-line bg-card px-4 py-1.5 text-center text-sm font-semibold">{note}</p>}
+      {hook && <p className="mx-auto mt-2 max-w-sm text-center text-sm"><span className="font-semibold text-brand">Accroche :</span> {hook}</p>}
       <p className="mx-auto mt-3 max-w-sm text-center text-sm text-muted">Tu peux quitter cette page : ta vidéo arrivera dans « Mes vidéos ».</p>
       <style>{`
         .rl-img{filter:blur(14px) saturate(1.2) brightness(.7);transform:scale(1.15);animation:rl-focus 8s ease-in-out infinite alternate}
