@@ -6,5 +6,5 @@ export const LEGAL = {
   site: "sokozia.com",
   country: "Côte d'Ivoire",
   city: "Abidjan",
-  updated: "30 septembre 2026",
+  updated: "4 novembre 2026",
 };

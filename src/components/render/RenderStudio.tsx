@@ -128,7 +128,9 @@ export default function RenderStudio({ models, directors, avatars, balance: init
 
   return (
     <>
-        <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-10 sm:pt-[18vh]">
+        <div className="mx-auto w-full max-w-3xl px-4 pb-16">
+          {/* Zone principale centrée à l'écran (comme une conversation vide) ; les dernières vidéos viennent dessous. */}
+          <div className="flex min-h-[calc(100svh-3.5rem)] flex-col justify-center py-8 md:min-h-[100svh]">
           {job ? (
             <RenderLoading image={job.image} aspect={job.aspect} etaSec={job.eta} startedAt={job.startedAt} note={job.note} hook={job.hook} />
           ) : done ? (
@@ -189,9 +191,10 @@ export default function RenderStudio({ models, directors, avatars, balance: init
             </>
           )}
           {error && <p className="mx-auto mt-4 max-w-md rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-700">{error}</p>}
+          </div>
 
           {recent.length > 0 && (
-            <section className="mt-12">
+            <section className="mt-4">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="font-bold">Mes dernières vidéos</h2>
                 <Link href="/mes-videos" className="text-sm font-semibold text-brand">Tout voir</Link>

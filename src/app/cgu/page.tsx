@@ -17,14 +17,15 @@ export default function Page() {
 
       <h2>1. Le Service</h2>
       <p>
-        Sokozia permet de créer des vidéos publicitaires de type UGC (« contenu créé par les utilisateurs ») à partir des informations et photos
-        que tu fournis. Une assistante de création automatisée t&apos;accompagne en plusieurs étapes (fiche produit, créateur, lieu, script,
-        vidéo). Les images, scripts et vidéos sont générés par des systèmes d&apos;intelligence artificielle fournis par des prestataires
-        techniques.
+        Sokozia permet de créer des vidéos publicitaires de type UGC (« contenu créé par les utilisateurs ») à partir de la photo de ton produit
+        et de ta demande. Tu choisis le modèle de vidéo, la durée, le format, le créateur (ou tu laisses le choix automatique) et un
+        « directeur » automatisé qui écrit la scène. Les scripts, images et vidéos sont générés par des systèmes d&apos;intelligence artificielle
+        fournis par des prestataires techniques (voir notre <Link href="/confidentialite" className="underline">Politique de confidentialité</Link>).
       </p>
       <p>
-        Les personnes, voix, lieux et situations présents dans les vidéos sont <b>entièrement générés par intelligence artificielle</b>. Ils ne
-        représentent aucune personne réelle et ne constituent pas le témoignage d&apos;un vrai client.
+        Les personnes, voix, lieux et situations présents dans les vidéos sont <b>entièrement générés par intelligence artificielle</b>. Les
+        « créateurs » proposés dans le studio sont des personnages fictifs créés par Sokozia : ils ne représentent aucune personne réelle et une
+        vidéo ne constitue pas le témoignage d&apos;un vrai client.
       </p>
 
       <h2>2. Compte</h2>
@@ -37,7 +38,7 @@ export default function Page() {
       <h2>3. Nature des contenus générés</h2>
       <ul>
         <li>L&apos;intelligence artificielle peut produire des résultats imparfaits, inexacts ou différents de ce qui était attendu (par exemple un texte d&apos;étiquette mal reproduit, un geste peu naturel, une prononciation approximative). Le Service est fourni « en l&apos;état », sans garantie que les résultats répondent à un besoin particulier.</li>
-        <li>Chaque étape doit être <b>relue et validée par toi</b> avant de passer à la suivante. En validant une étape ou en lançant une vidéo, tu confirmes que le contenu te convient.</li>
+        <li>Avant de lancer une vidéo, tu vois le modèle, la durée, le format et le <b>prix</b>. En cliquant sur « Générer », tu acceptes que la vidéo soit créée à partir de ta photo et de ta demande, telles que tu les as fournies.</li>
         <li>Tu es seul responsable de vérifier la conformité d&apos;une vidéo avant de la publier, notamment l&apos;exactitude des promesses faites sur ton produit.</li>
       </ul>
 
@@ -56,7 +57,7 @@ export default function Page() {
       </p>
       <h3>4.2 Licence qui t&apos;est accordée</h3>
       <p>
-        Pour chaque vidéo que tu as payée (ou obtenue via un pack), Sokozia t&apos;accorde une licence <b>non exclusive, mondiale, pour toute la durée
+        Pour chaque vidéo que tu as payée (ou qui t&apos;a été offerte par Sokozia), Sokozia t&apos;accorde une licence <b>non exclusive, mondiale, pour toute la durée
         des droits</b>, de l&apos;utiliser, la reproduire et la diffuser pour la promotion de tes produits et services (réseaux sociaux, publicités,
         site internet, messageries, points de vente). Tu peux la couper, la sous-titrer ou la recadrer. Tu ne peux pas la revendre, la céder, la
         proposer dans une banque de contenus ni l&apos;utiliser pour entraîner un système d&apos;intelligence artificielle.
@@ -95,22 +96,22 @@ export default function Page() {
         manquement ou de risque, sans préavis ni remboursement des sommes déjà consommées.
       </p>
 
-      <h2>7. Prix et paiement</h2>
+      <h2>7. Prix, solde et paiement</h2>
       <ul>
-        <li>Le prix d&apos;une pub dépend du style et de la durée choisis. Il est affiché en toutes lettres avant chaque paiement, en monnaie locale.</li>
-        <li>Offres : <b>1 pub</b>, <b>pack de 5 pubs</b> ou <b>abonnement mensuel</b>. Un pack ou un abonnement donne droit à un nombre de pubs d&apos;un style et d&apos;une durée précis. L&apos;abonnement mensuel est valable 30 jours à compter du paiement ; les pubs non utilisées à la fin de cette période sont perdues. Il n&apos;est <b>pas renouvelé automatiquement</b>.</li>
-        <li>Le paiement se fait par Mobile Money via notre prestataire de paiement pawaPay. Tu dois utiliser un compte Mobile Money dont tu es titulaire ou que tu es autorisé à utiliser. Les éventuels frais de ton opérateur restent à ta charge.</li>
-        <li>L&apos;achat est définitif dès confirmation du paiement par l&apos;opérateur. Pour « 1 pub » lancée depuis le studio, la création démarre automatiquement après confirmation.</li>
-        <li>Chaque projet inclut un nombre limité de nouvelles versions par étape (actuellement 3). Au-delà, l&apos;étape doit être validée en l&apos;état.</li>
-        <li>Nous pouvons modifier nos prix à tout moment ; les achats déjà confirmés ne sont pas affectés.</li>
+        <li>Le Service fonctionne <b>à l&apos;usage, sans abonnement</b>. Tu recharges un <b>solde</b> (« portefeuille »), puis chaque vidéo est débitée de ce solde au moment où tu la lances.</li>
+        <li>Le prix d&apos;une vidéo dépend du modèle et de la durée choisis (et, le cas échéant, des options). Il est <b>affiché avant chaque lancement</b>, en monnaie locale. Si ton solde est insuffisant, la vidéo n&apos;est pas lancée.</li>
+        <li>La recharge se fait par Mobile Money via notre prestataire pawaPay, ou par carte bancaire via notre prestataire Stripe. Tu dois utiliser un compte ou une carte dont tu es titulaire ou que tu es autorisé à utiliser. Les éventuels frais de ton opérateur ou de ta banque restent à ta charge. Nous ne voyons ni ne stockons ton code Mobile Money ni les numéros de ta carte.</li>
+        <li>Une recharge est créditée dès que le paiement est confirmé par le prestataire. Ton solde <b>n&apos;expire pas</b>, n&apos;est pas convertible en espèces et ne peut pas être transféré à un autre compte.</li>
+        <li>Nous pouvons modifier nos prix à tout moment ; les vidéos déjà lancées ne sont pas affectées.</li>
       </ul>
 
       <h2>8. Remboursements et réclamations</h2>
       <ul>
-        <li>Le Service est un contenu numérique fourni immédiatement à ta demande. En lançant une création, tu demandes son exécution immédiate et reconnais que les sommes correspondantes ne sont <b>pas remboursables</b>, sauf disposition légale impérative contraire.</li>
-        <li>Si la création d&apos;une vidéo échoue pour une raison technique, la pub <b>n&apos;est pas décomptée</b> : elle est automatiquement rendue à ton pack ou peut être relancée gratuitement.</li>
-        <li>Si tu as été débité sans recevoir ton achat, écris-nous à {LEGAL.email} dans les 30 jours avec la date, le montant et le numéro utilisé. Après vérification auprès de notre prestataire de paiement, nous activons ton achat ou te remboursons sur le même compte Mobile Money.</li>
-        <li>Une vidéo générée ne peut pas être contestée au seul motif qu&apos;elle ne correspond pas à tes goûts, puisque chaque étape a été validée par toi.</li>
+        <li>Le Service est un contenu numérique fourni immédiatement à ta demande. En lançant une vidéo, tu demandes son exécution immédiate et reconnais que le montant débité n&apos;est <b>pas remboursable</b>, sauf disposition légale impérative contraire.</li>
+        <li>Si la création d&apos;une vidéo échoue pour une raison technique, le montant est <b>automatiquement recrédité sur ton solde</b>.</li>
+        <li>Si tu as été débité sans que ton solde soit crédité, écris-nous à {LEGAL.email} dans les 30 jours avec la date, le montant et le moyen de paiement utilisé. Après vérification auprès de notre prestataire, nous créditons ton solde ou te remboursons par le même moyen de paiement.</li>
+        <li>Le solde non utilisé n&apos;est pas remboursable, sauf fermeture définitive du Service (article 9) ou disposition légale contraire.</li>
+        <li>Une vidéo générée ne peut pas être contestée au seul motif qu&apos;elle ne correspond pas à tes goûts.</li>
       </ul>
 
       <h2>9. Disponibilité du Service</h2>
@@ -118,7 +119,7 @@ export default function Page() {
         Nous faisons nos meilleurs efforts pour que le Service soit accessible, sans garantie de disponibilité continue. Il dépend de prestataires
         techniques (hébergement, intelligence artificielle, paiement, opérateurs) et peut être interrompu pour maintenance, panne ou raison de
         sécurité. Nous pouvons faire évoluer, remplacer ou arrêter tout ou partie des fonctionnalités, styles ou technologies utilisés. En cas
-        d&apos;arrêt définitif du Service, les pubs payées et non utilisées seront remboursées au prorata.
+        d&apos;arrêt définitif du Service, le solde non utilisé sera remboursé.
       </p>
 
       <h2>10. Responsabilité</h2>
@@ -138,7 +139,7 @@ export default function Page() {
 
       <h2>12. Durée et résiliation</h2>
       <p>
-        Tu peux fermer ton compte à tout moment en écrivant à {LEGAL.email}. Les pubs restantes dans un pack sont alors perdues. Les articles 4
+        Tu peux fermer ton compte à tout moment en écrivant à {LEGAL.email}. Si ton solde n&apos;est pas utilisé, tu peux demander son remboursement dans la même demande, déduction faite des frais de paiement. Les articles 4
         (propriété), 8, 10, 11 et 14 restent applicables après la fermeture du compte. La licence sur les vidéos déjà obtenues (article 4.2) est
         maintenue, sauf fermeture pour manquement grave.
       </p>

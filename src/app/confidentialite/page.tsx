@@ -19,8 +19,8 @@ export default function Page() {
       <h2>2. Données collectées</h2>
       <ul>
         <li><b>Compte</b> : nom ou nom de boutique, adresse e-mail, mot de passe (stocké chiffré, jamais lisible par nous), pays.</li>
-        <li><b>Paiement</b> : numéro Mobile Money, opérateur, montant, devise, date et statut des paiements. Nous ne recevons ni ne stockons ton code secret Mobile Money.</li>
-        <li><b>Projets</b> : informations sur tes produits, photos que tu envoies, messages échangés avec l&apos;assistante, choix et validations à chaque étape, scripts, images et vidéos générées.</li>
+        <li><b>Paiement et solde</b> : moyen de paiement utilisé (Mobile Money ou carte), numéro Mobile Money et opérateur, montant, devise, date et statut des paiements, mouvements de ton solde. Nous ne recevons ni ne stockons ton code secret Mobile Money ni les numéros de ta carte bancaire, qui sont traités directement par pawaPay et Stripe.</li>
+        <li><b>Créations</b> : photos de produits que tu envoies, ta demande écrite, tes choix (modèle, durée, format, créateur, directeur), les scripts écrits pour la vidéo, les images et vidéos générées.</li>
         <li><b>Données techniques</b> : adresse IP, type d&apos;appareil et de navigateur, dates de connexion et journaux techniques nécessaires à la sécurité.</li>
       </ul>
       <p>
@@ -30,7 +30,7 @@ export default function Page() {
 
       <h2>3. Pourquoi nous les utilisons</h2>
       <ul>
-        <li><b>Fournir le Service</b> (exécution du contrat) : créer ton compte, générer tes contenus, gérer tes packs, te donner accès à tes vidéos.</li>
+        <li><b>Fournir le Service</b> (exécution du contrat) : créer ton compte, générer tes vidéos, gérer ton solde, te donner accès à tes vidéos et à leur téléchargement.</li>
         <li><b>Paiements</b> (exécution du contrat et obligations légales) : encaisser, vérifier les paiements, traiter les réclamations, tenir notre comptabilité.</li>
         <li><b>Sécurité et prévention des abus</b> (intérêt légitime) : lutter contre la fraude, les contenus interdits et les usages abusifs.</li>
         <li><b>Amélioration du Service</b> (intérêt légitime) : analyser les usages, améliorer nos consignes de création et la qualité des vidéos.</li>
@@ -41,23 +41,24 @@ export default function Page() {
       <p>Tes données ne sont <b>jamais vendues</b>. Elles sont accessibles à l&apos;équipe Sokozia habilitée et transmises uniquement à nos prestataires, dans la limite de ce dont ils ont besoin :</p>
       <ul>
         <li>hébergement, base de données et stockage des fichiers ;</li>
-        <li>prestataires d&apos;intelligence artificielle, qui reçoivent tes descriptions, photos et scripts pour générer les contenus ;</li>
-        <li>notre prestataire de paiement (pawaPay) et les opérateurs Mobile Money ;</li>
+        <li>prestataires d&apos;intelligence artificielle : <b>Anthropic</b> (modèles Claude, via OpenRouter), qui reçoit la photo de ton produit et ta demande pour écrire la scène, et <b>Higgsfield</b>, qui reçoit la photo, le script et l&apos;image du créateur pour générer l&apos;image d&apos;ouverture et la vidéo ;</li>
+        <li>nos prestataires de paiement : <b>pawaPay</b> et les opérateurs Mobile Money, et <b>Stripe</b> pour les cartes bancaires ;</li>
         <li>services d&apos;envoi d&apos;e-mails ;</li>
         <li>les autorités, lorsque la loi nous y oblige.</li>
       </ul>
 
       <h2>5. Transferts hors de Côte d&apos;Ivoire</h2>
       <p>
-        Certains prestataires sont situés hors de Côte d&apos;Ivoire, notamment dans l&apos;Union européenne et aux États-Unis. Ces transferts sont nécessaires
-        au fonctionnement du Service. Nous choisissons des prestataires qui offrent des garanties de sécurité et de confidentialité adaptées, et nous
+        Certains prestataires sont situés hors de Côte d&apos;Ivoire, notamment dans l&apos;Union européenne (hébergement, Stripe) et aux États-Unis
+        (Anthropic, OpenRouter, Higgsfield). La photo de ton produit et ta demande y sont donc transmises pour créer ta vidéo : ces transferts
+        sont nécessaires au fonctionnement du Service. Nous choisissons des prestataires qui offrent des garanties de sécurité et de confidentialité adaptées, et nous
         effectuons les formalités requises auprès de l&apos;autorité de protection (ARTCI).
       </p>
 
       <h2>6. Durée de conservation</h2>
       <ul>
         <li>Données de compte et de projets : tant que ton compte est actif, puis 1 an après sa fermeture.</li>
-        <li>Données de paiement : 10 ans, pour nos obligations comptables et fiscales.</li>
+        <li>Données de paiement et mouvements du solde : 10 ans, pour nos obligations comptables et fiscales.</li>
         <li>Journaux techniques : 12 mois.</li>
         <li>Les contenus générés, propriété de Sokozia (voir nos Conditions générales), peuvent être conservés au-delà. Sur demande, nous retirons de toute diffusion publique ceux qui contiennent ta marque ou ton logo.</li>
       </ul>
