@@ -29,13 +29,13 @@ export function AvatarPick({ value, avatars, onChange }: { value: string; avatar
     </button>
   );
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative min-w-0">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-haspopup="dialog" aria-expanded={open} title="Créateur"
-        className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium transition ${open ? "bg-[#f6ebdc] text-ink" : "text-ink/75 hover:bg-[#f6ebdc] hover:text-ink"}`}>
+        className={`flex h-9 w-full min-w-0 items-center justify-center gap-1 rounded-full bg-[#f6ebdc]/70 px-1.5 text-[13px] sm:w-auto sm:text-sm sm:shrink-0 sm:justify-start sm:gap-1.5 sm:bg-transparent sm:px-2.5 font-medium transition ${open ? "bg-[#f6ebdc] text-ink" : "text-ink/75 hover:bg-[#f6ebdc] hover:text-ink"}`}>
         {cur ? (/* eslint-disable-next-line @next/next/no-img-element */ <img src={cur.portrait} alt="" className="size-6 rounded-full object-cover" />)
           : value === "none" ? <PackageOpen size={16} /> : <UserRound size={16} />}
-        <span className="whitespace-nowrap">{cur ? cur.name : value === "none" ? "Produit seul" : <><span className="sm:hidden">Auto</span><span className="hidden sm:inline">Créateur auto</span></>}</span>
-        <ChevronDown size={14} className={`opacity-60 transition ${open ? "rotate-180" : ""}`} />
+        <span className="truncate whitespace-nowrap">{cur ? cur.name : value === "none" ? "Produit seul" : <><span className="sm:hidden">Auto</span><span className="hidden sm:inline">Créateur auto</span></>}</span>
+        <ChevronDown size={14} className={`hidden shrink-0 opacity-60 sm:block transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (phone
         ? createPortal(<>

@@ -22,10 +22,10 @@ export function Pick({ icon, value, options, onChange, title }: { icon: ReactNod
   }, [open]);
   const current = options.find((o) => o.value === value);
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative min-w-0">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open} title={title}
-        className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-sm sm:px-3 font-medium transition ${open ? "bg-[#f6ebdc] text-ink" : "text-ink/75 hover:bg-[#f6ebdc] hover:text-ink"}`}>
-        {icon}<span className="whitespace-nowrap">{current?.short ? <><span className="sm:hidden">{current.short}</span><span className="hidden sm:inline">{current.label}</span></> : current?.label ?? title}</span><ChevronDown size={14} className={`opacity-60 transition ${open ? "rotate-180" : ""}`} />
+        className={`flex h-9 w-full min-w-0 items-center justify-center gap-1 rounded-full bg-[#f6ebdc]/70 px-1.5 text-[13px] sm:w-auto sm:text-sm sm:shrink-0 sm:justify-start sm:gap-1.5 sm:bg-transparent sm:px-2.5 sm:px-3 font-medium transition ${open ? "bg-[#f6ebdc] text-ink" : "text-ink/75 hover:bg-[#f6ebdc] hover:text-ink"}`}>
+        {icon}<span className="truncate whitespace-nowrap">{current?.short ? <><span className="sm:hidden">{current.short}</span><span className="hidden sm:inline">{current.label}</span></> : current?.label ?? title}</span><ChevronDown size={14} className={`hidden shrink-0 opacity-60 sm:block transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (phone
         ? createPortal(<>

@@ -161,10 +161,10 @@ export default function RenderStudio({ models, directors, avatars, balance: init
                   className="block min-h-12 w-full resize-none bg-transparent text-[16px] leading-6 outline-none placeholder:text-muted/70" />
                 <input ref={file} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files)} />
                 <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="no-scrollbar -mx-1 flex min-w-0 items-center gap-0.5 overflow-x-auto px-1 pr-6 [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:flex-wrap sm:overflow-visible sm:pr-1 sm:[mask-image:none]">
+                  <div className="grid min-w-0 grid-cols-3 gap-1.5 sm:-ml-1 sm:flex sm:flex-wrap sm:items-center sm:gap-0.5">
                     <button type="button" onClick={() => file.current?.click()} title="Ajouter la photo du produit" aria-label="Ajouter la photo du produit"
-                      className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium hover:bg-[#f6ebdc] ${image ? "text-ink/75" : "text-brand"}`}>
-                      {uploading ? <Loader2 size={18} className="animate-spin" /> : <ImagePlus size={18} />}<span className="hidden sm:inline">{image ? "Changer" : "Photo produit"}</span>
+                      className={`flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-full bg-[#f6ebdc]/70 px-1.5 text-[13px] font-medium hover:bg-[#f6ebdc] sm:justify-start sm:text-sm sm:bg-transparent sm:px-2.5 ${image ? "text-ink/75" : "text-brand"}`}>
+                      {uploading ? <Loader2 size={18} className="animate-spin" /> : <ImagePlus size={18} />}<span className="truncate">{image ? "Photo ✓" : "Photo"}</span>
                     </button>
                     <AvatarPick value={creator} avatars={avatars} onChange={setCreator} />
                     <Pick title="Directeur de la pub" icon={<Clapperboard size={16} />} value={director} onChange={setDirector}
